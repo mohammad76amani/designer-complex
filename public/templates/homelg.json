@@ -1,0 +1,120 @@
+{
+  "type": "layout",
+  "settings": {
+    "fontFamily": "Arial, sans-serif",
+    "colorSchema": {
+      "primary": "#3498db",
+      "secondary": "#2ecc71",
+      "text": "#333333"
+    }
+  },
+  "sections": {
+    "children": {
+      "sections": [
+        {
+          "type": "designer",
+          "setting": {
+            "paddingTop": "20",
+            "paddingBottom": "20",
+            "paddingLeft": "20",
+            "paddingRight": "20",
+            "marginTop": "30",
+            "marginBottom": "30",
+            "backgroundColor": "#ffffff"
+          },
+          "blocks": {
+            "elements": [
+              {
+                "id": "7a6f6b21-f7ba-41c4-8f31-2dd95fd1c7d5",
+                "type": "button",
+                "content": "car dealer",
+                "style": {
+                  "x": 96,
+                  "y": 359,
+                  "width": 241,
+                  "height": 61,
+                  "fontSize": 30,
+                  "fontWeight": "bold",
+                  "color": "#ebe6e6",
+                  "backgroundColor": "rgba(217, 109, 109, 0.46)",
+                  "borderRadius": 14,
+                  "padding": 0,
+                  "textAlign": "center",
+                  "zIndex": 4
+                },
+                "href": "https://www.stratstone.com/-/media/stratstone/blog/2024/top-10-best-supercars-of-2024/mclaren-750s-driving-dynamic-hero-1920x774px.ashx"
+              },
+              {
+                "id": "5ce0d03a-c2e4-4dc3-94ef-9be3a7ade851",
+                "type": "image",
+                "content": "",
+                "style": {
+                  "x": 0,
+                  "y": 2,
+                  "width": 1372,
+                  "height": 498,
+                  "fontSize": 16,
+                  "fontWeight": "normal",
+                  "color": "#000000",
+                  "backgroundColor": "rgba(109, 59, 59, 1)",
+                  "borderRadius": 23,
+                  "padding": 0,
+                  "textAlign": "right",
+                  "zIndex": 1
+                },
+                "src": "https://www.stratstone.com/-/media/stratstone/blog/2024/top-10-best-supercars-of-2024/mclaren-750s-driving-dynamic-hero-1920x774px.ashx",
+                "alt": "Canvas image"
+              },
+              {
+                "id": "1ba27a2e-65fa-4da7-a3b7-d81b79b81a48",
+                "type": "paragraph",
+                "content": "British marque McLaren, known for its seductive -- and fear-inducing -- supercars, recently launched its 750S coupe and spider, successors to its widely successful 720S. The brand has one hybrid on sale, the Artura, which launched in 2022. Customers, however, still demand the palpable acoustics of the raucous twin-turbo 4.0-liter V8 positioned behind the driver's seat. The 750S may be the epitome of internal combustion engine (ICE) ingenuity.",
+                "style": {
+                  "x": 6,
+                  "y": 39,
+                  "width": 419,
+                  "height": 285,
+                  "fontSize": 18,
+                  "fontWeight": "normal",
+                  "color": "rgba(0, 0, 0, 1)",
+                  "backgroundColor": "rgba(190, 119, 118, 0.79)",
+                  "borderRadius": 20,
+                  "padding": 17,
+                  "textAlign": "right",
+                  "zIndex": 1
+                }
+              },
+              {
+                "id": "de2b6bb0-8339-4995-9aef-f4ee725dc627",
+                "type": "heading",
+                "content": "performance arms race",
+                "style": {
+                  "x": 5,
+                  "y": 14,
+                  "width": 350,
+                  "height": 53,
+                  "fontSize": 30,
+                  "fontWeight": "normal",
+                  "color": "#000000",
+                  "backgroundColor": "transparent",
+                  "borderRadius": 0,
+                  "padding": 0,
+                  "textAlign": "left",
+                  "zIndex": 1
+                }
+              }
+            ],
+            "setting": {
+              "canvasWidth": "100%",
+              "canvasHeight": "500px",
+              "backgroundColor": "#f9fafb",
+              "gridSize": 10,
+              "showGrid": false
+            }
+          }
+        }
+      ],
+      "order": ["designer"]
+    }
+  }
+}
