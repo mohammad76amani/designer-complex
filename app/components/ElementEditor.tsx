@@ -1,10 +1,6 @@
 import React, { useState } from 'react';
 import { Element } from '../types/template';
-
-interface ElementEditorProps {
-  element: Element;
-  onUpdateElement: (updatedElement: Element) => void;
-}
+import { ElementEditorProps } from '../types/template';
 
 const ElementEditor: React.FC<ElementEditorProps> = ({ element, onUpdateElement }) => {
   const [x, setX] = useState(element.style.x);

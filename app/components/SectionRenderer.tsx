@@ -1,11 +1,6 @@
 import React from 'react';
-import { Section } from '../types/template';
 import CanvasRenderer from './CanvasRenderer';
-
-interface SectionRendererProps {
-  sectionKey: string;
-  section: Section;
-}
+import {SectionRendererProps} from '../types/template';
 
 const SectionRenderer: React.FC<SectionRendererProps> = ({ sectionKey, section }) => {
   // Handle nested sections (children)
@@ -48,7 +43,12 @@ const SectionRenderer: React.FC<SectionRendererProps> = ({ sectionKey, section }
       data-section-type={type}
       style={sectionStyle}
     >
-      {blocks && <CanvasRenderer blocks={blocks} />}
+      {blocks && <CanvasRenderer 
+        blocks={blocks}
+        onSelectElement={() => {}}
+        onUpdateElement={() => {}}
+        onElementContextMenu={() => {}}
+      />}
     </section>
   );
 };

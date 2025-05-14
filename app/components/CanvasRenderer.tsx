@@ -1,24 +1,23 @@
 import React, { useRef } from 'react';
-import { Blocks, Element } from '../types/template';
 import ElementRenderer from './ElementRenderer';
-
-interface CanvasRendererProps {
-  blocks: Blocks;
-  onSelectElement: (element: Element) => void;
-  selectedElementId?: string;
-  onUpdateElement: (updatedElement: Element) => void;
-}
+import {CanvasRendererProps} from '../types/template';
 
 const CanvasRenderer: React.FC<CanvasRendererProps> = ({ 
   blocks, 
   onSelectElement,
   selectedElementId,
-  onUpdateElement
+  onUpdateElement,
+  onElementContextMenu,
+  onCanvasContextMenu,
+  onCloseContextMenu,
+  canvasRef: externalCanvasRef,
+  onOpenStyleEditor // Changed from onElementDoubleClick
 }) => {
+  const localCanvasRef = useRef<HTMLDivElement>(null);
+  const canvasRef = (externalCanvasRef || localCanvasRef) as React.RefObject<HTMLDivElement>;
   // Handle both setting and settings properties
   const settings = blocks.setting || blocks.settings;
   const { elements } = blocks;
-  const canvasRef = useRef<HTMLDivElement>(null);
   
   if (!settings) {
     console.error("No settings found in blocks");
@@ -32,27 +31,45 @@ const CanvasRenderer: React.FC<CanvasRendererProps> = ({
     position: 'relative',
     overflow: 'hidden',
   };
+  const handleCanvasContextMenu = (e: React.MouseEvent) => {
+  e.preventDefault();
+  
+  // Only handle direct right-clicks on the canvas, not on elements
+  if (e.target === e.currentTarget && onCanvasContextMenu) {
+    onCanvasContextMenu(e.clientX, e.clientY);
+  }
+};
+  // Handle canvas click to close context menu
+  const handleCanvasClick = (e: React.MouseEvent) => {
+    // Only handle direct clicks on the canvas, not on elements
+    if (e.target === e.currentTarget && onCloseContextMenu) {
+      onCloseContextMenu();
+    }
+  };
   
   return (
-    <div 
-      className="canvas" 
-      style={canvasStyle}
-      data-grid-size={settings.gridSize}
-      data-show-grid={settings.showGrid}
-      ref={canvasRef}
-    >
-      {elements.map((element) => (
-        <ElementRenderer 
-          key={element.id} 
-          element={element} 
-          onSelect={() => onSelectElement(element)}
-          isSelected={element.id === selectedElementId}
-          onUpdateElement={onUpdateElement}
-          canvasRef={canvasRef}
-        />
-      ))}
-    </div>
-  );
+  <div 
+    className="canvas" 
+    style={canvasStyle}
+    data-grid-size={settings.gridSize}
+    data-show-grid={settings.showGrid}
+    ref={canvasRef}
+    onContextMenu={handleCanvasContextMenu}
+  >
+    {elements.map((element) => (
+      <ElementRenderer 
+        key={element.id} 
+        element={element} 
+        onSelect={() => onSelectElement(element)}
+        isSelected={element.id === selectedElementId}
+        onUpdateElement={onUpdateElement}
+        canvasRef={canvasRef}
+        onContextMenu={onElementContextMenu}
+        onOpenStyleEditor={onOpenStyleEditor ? () => onOpenStyleEditor(element) : undefined}
+      />
+    ))}
+  </div>
+);
 };
 
 export default CanvasRenderer;

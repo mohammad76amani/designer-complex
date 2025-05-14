@@ -1,22 +1,18 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Element } from '../types/template';
+import { ElementRendererProps } from '../types/template';
 
-interface ElementRendererProps {
-  element: Element;
-  onSelect: () => void;
-  isSelected: boolean;
-  onUpdateElement: (updatedElement: Element) => void;
-  canvasRef: React.RefObject<HTMLDivElement>;
-}
 
 const ElementRenderer: React.FC<ElementRendererProps> = ({ 
   element, 
   onSelect,
   isSelected,
   onUpdateElement,
-  canvasRef
+  canvasRef,
+  onContextMenu,
+  onOpenStyleEditor
 }) => {
-  const { id, type, content, style, src, alt, href } = element;
+  const { id, type, content, style, src, alt, href, target } = element;
   const elementRef = useRef<HTMLDivElement>(null);
   
   // State for dragging and resizing
@@ -27,6 +23,59 @@ const ElementRenderer: React.FC<ElementRendererProps> = ({
   const [initialSize, setInitialSize] = useState({ width: 0, height: 0 });
   const [initialPosition, setInitialPosition] = useState({ x: 0, y: 0 });
   const [initialMousePosition, setInitialMousePosition] = useState({ x: 0, y: 0 });
+  
+  // Generate box shadow if shadow properties exist
+  const generateBoxShadow = () => {
+    if (style.boxShadowBlur || style.boxShadowSpread) {
+      const blur = style.boxShadowBlur || 0;
+      const spread = style.boxShadowSpread || 0;
+      const color = style.boxShadowColor || 'rgba(0,0,0,0.2)';
+      return `0 0 ${blur}px ${spread}px ${color}`;
+    }
+    return isSelected ? '0 0 10px rgba(52, 152, 219, 0.5)' : 'none';
+  };
+  
+  // Generate transform style if transform properties exist
+  const generateTransform = () => {
+    const transforms = [];
+    
+    if (style.rotate) {
+      transforms.push(`rotate(${style.rotate}deg)`);
+    }
+    
+    if (style.scale && style.scale !== 1) {
+      transforms.push(`scale(${style.scale})`);
+    }
+    
+    return transforms.length ? transforms.join(' ') : 'none';
+  };
+// Generate filter style if filter properties exist
+const generateFilter = () => {
+  const filters = [];
+  
+  if (style.blur) {
+    filters.push(`blur(${style.blur}px)`);
+  }
+  
+  if (style.brightness && style.brightness !== 100) {
+    filters.push(`brightness(${style.brightness}%)`);
+  }
+  
+  if (style.contrast && style.contrast !== 100) {
+    filters.push(`contrast(${style.contrast}%)`);
+  }
+  
+  return filters.length ? filters.join(' ') : 'none';
+};
+
+  
+  // Generate border style if border properties exist
+  const generateBorder = () => {
+    if (style.borderWidth && style.borderStyle && style.borderStyle !== 'none') {
+      return `${style.borderWidth}px ${style.borderStyle} ${style.borderColor || '#000000'}`;
+    }
+    return isSelected ? '2px solid #3498db' : 'none';
+  };
   
   const elementStyle: React.CSSProperties = {
     position: 'absolute',
@@ -44,14 +93,23 @@ const ElementRenderer: React.FC<ElementRendererProps> = ({
     zIndex: isDragging || isResizing ? 1000 : style.zIndex,
     boxSizing: 'border-box',
     cursor: isDragging ? 'grabbing' : 'grab',
-    border: isSelected ? '2px solid #3498db' : 'none',
-    boxShadow: isSelected ? '0 0 10px rgba(52, 152, 219, 0.5)' : 'none',
+    border: generateBorder(),
+    boxShadow: generateBoxShadow(),
     userSelect: 'none',
     touchAction: 'none',
+    // Add new style properties
+    opacity: style.opacity !== undefined ? style.opacity : 1,
+    letterSpacing: style.letterSpacing !== undefined ? `${style.letterSpacing}px` : 'normal',
+    lineHeight: style.lineHeight !== undefined ? style.lineHeight : 'normal',
+    transform: generateTransform(),
+    filter: generateFilter(),
   };
 
   // Handle mouse down for dragging
   const handleMouseDown = (e: React.MouseEvent) => {
+    // Only respond to left mouse button (button 0)
+    if (e.button !== 0) return;
+    
     e.preventDefault();
     e.stopPropagation();
     
@@ -182,6 +240,9 @@ const ElementRenderer: React.FC<ElementRendererProps> = ({
   
   // Handle resize start
   const handleResizeStart = (e: React.MouseEvent, handle: string) => {
+    // Only respond to left mouse button (button 0)
+    if (e.button !== 0) return;
+    
     e.preventDefault();
     e.stopPropagation();
     
@@ -207,6 +268,27 @@ const ElementRenderer: React.FC<ElementRendererProps> = ({
         y: e.clientY - canvasRect.top
       });
     }
+  };
+  
+  const handleClick = (e: React.MouseEvent) => {
+    // We don't want to prevent default or stop propagation here
+    // because we still want the element to be selected
+    
+    // If the element is already selected and we have an onOpenStyleEditor handler,
+    // call it to open the style editor
+    if (isSelected && onOpenStyleEditor) {
+      onOpenStyleEditor();
+    }
+  };
+  
+  // Handle context menu (right-click)
+  const handleContextMenu = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    // Don't select the element on right-click
+    // Just show the context menu for this element
+    onContextMenu(element, e.clientX, e.clientY);
   };
   
   // Add and remove event listeners
@@ -269,7 +351,7 @@ const ElementRenderer: React.FC<ElementRendererProps> = ({
             width: '100%',
             height: '100%',
             display: 'flex',
-            alignItems: 'center',
+                        alignItems: 'center',
             justifyContent: style.textAlign === 'center' ? 'center' : 
                            style.textAlign === 'right' ? 'flex-end' : 'flex-start',
             pointerEvents: 'none'
@@ -286,7 +368,7 @@ const ElementRenderer: React.FC<ElementRendererProps> = ({
             style={{
               width: '100%', 
               height: '100%', 
-              objectFit: 'cover',
+              objectFit: style.objectFit as 'cover' | 'contain' | 'fill' | 'none' || 'cover',
               borderRadius: `${style.borderRadius}px`,
               pointerEvents: 'none',
             }} 
@@ -327,6 +409,8 @@ const ElementRenderer: React.FC<ElementRendererProps> = ({
       ref={elementRef}
       style={elementStyle}
       onMouseDown={handleMouseDown}
+      onClick={handleClick}
+      onContextMenu={handleContextMenu}
       data-element-id={id}
       data-element-type={type}
       className={`element-wrapper ${isDragging ? 'dragging' : ''} ${isResizing ? 'resizing' : ''}`}
@@ -338,3 +422,4 @@ const ElementRenderer: React.FC<ElementRendererProps> = ({
 };
 
 export default ElementRenderer;
+

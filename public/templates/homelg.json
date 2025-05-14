@@ -6,6 +6,32 @@
       "primary": "#3498db",
       "secondary": "#2ecc71",
       "text": "#333333"
+    },
+    "styleProperties": {
+      "opacity": true,
+      "letterSpacing": true,
+      "lineHeight": true,
+      "border": {
+        "width": true,
+        "style": true,
+        "color": true
+      },
+      "shadow": {
+        "blur": true,
+        "spread": true,
+        "color": true
+      },
+      "transform": {
+        "rotate": true,
+        "scale": true
+      },
+      "filters": {
+        "blur": true,
+        "brightness": true,
+        "contrast": true
+      },
+      "objectFit": true,
+      "linkTarget": true
     }
   },
   "sections": {
@@ -29,7 +55,7 @@
                 "type": "button",
                 "content": "car dealer",
                 "style": {
-                  "x": 96,
+                  "x": 85,
                   "y": 359,
                   "width": 241,
                   "height": 61,
@@ -40,9 +66,24 @@
                   "borderRadius": 14,
                   "padding": 0,
                   "textAlign": "center",
-                  "zIndex": 4
+                  "zIndex": 4,
+                  "opacity": 1,
+                  "letterSpacing": 0,
+                  "lineHeight": 1.5,
+                  "borderWidth": 0,
+                  "borderStyle": "none",
+                  "borderColor": "#000000",
+                  "boxShadowBlur": 0,
+                  "boxShadowSpread": 0,
+                  "boxShadowColor": "rgba(0,0,0,0.2)",
+                  "rotate": 0,
+                  "scale": 1,
+                    "blur": 0,
+                    "brightness": 100,
+                    "contrast": 100
                 },
-                "href": "https://www.stratstone.com/-/media/stratstone/blog/2024/top-10-best-supercars-of-2024/mclaren-750s-driving-dynamic-hero-1920x774px.ashx"
+                "href": "https://www.stratstone.com/-/media/stratstone/blog/2024/top-10-best-supercars-of-2024/mclaren-750s-driving-dynamic-hero-1920x774px.ashx",
+                "target": "_self"
               },
               {
                 "id": "5ce0d03a-c2e4-4dc3-94ef-9be3a7ade851",
@@ -60,7 +101,22 @@
                   "borderRadius": 23,
                   "padding": 0,
                   "textAlign": "right",
-                  "zIndex": 1
+                  "zIndex": 1,
+                  "opacity": 1,
+                  "borderWidth": 0,
+                  "borderStyle": "none",
+                  "borderColor": "#000000",
+                  "boxShadowBlur": 0,
+                  "boxShadowSpread": 0,
+                  "boxShadowColor": "rgba(0,0,0,0.2)",
+                  "rotate": 0,
+                  "scale": 1,
+                  "objectFit": "cover",
+                  
+                    "blur": 0,
+                    "brightness": 100,
+                    "contrast": 100
+                  
                 },
                 "src": "https://www.stratstone.com/-/media/stratstone/blog/2024/top-10-best-supercars-of-2024/mclaren-750s-driving-dynamic-hero-1920x774px.ashx",
                 "alt": "Canvas image"
@@ -81,7 +137,23 @@
                   "borderRadius": 20,
                   "padding": 17,
                   "textAlign": "right",
-                  "zIndex": 1
+                  "zIndex": 1,
+                  "opacity": 1,
+                  "letterSpacing": 0,
+                  "lineHeight": 1.5,
+                  "borderWidth": 0,
+                  "borderStyle": "none",
+                  "borderColor": "#000000",
+                  "boxShadowBlur": 0,
+                  "boxShadowSpread": 0,
+                  "boxShadowColor": "rgba(0,0,0,0.2)",
+                  "rotate": 0,
+                  "scale": 1,
+                  
+                    "blur": 0,
+                    "brightness": 100,
+                    "contrast": 100
+                  
                 }
               },
               {
@@ -91,16 +163,32 @@
                 "style": {
                   "x": 5,
                   "y": 14,
-                  "width": 350,
+                  "width": 263,
                   "height": 53,
-                  "fontSize": 30,
+                  "fontSize": 32,
                   "fontWeight": "normal",
                   "color": "#000000",
                   "backgroundColor": "transparent",
                   "borderRadius": 0,
                   "padding": 0,
-                  "textAlign": "left",
-                  "zIndex": 1
+                  "textAlign": "right",
+                  "zIndex": 1,
+                  "opacity": 1,
+                  "letterSpacing": 0,
+                  "lineHeight": 1.2,
+                  "borderWidth": 0,
+                  "borderStyle": "none",
+                  "borderColor": "#000000",
+                  "boxShadowBlur": 0,
+                  "boxShadowSpread": 0,
+                  "boxShadowColor": "rgba(0,0,0,0.2)",
+                  "rotate": 0,
+                  "scale": 1,
+                  
+                    "blur": 0,
+                    "brightness": 100,
+                    "contrast": 100
+                  
                 }
               }
             ],
