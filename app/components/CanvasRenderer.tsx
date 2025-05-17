@@ -11,7 +11,7 @@ const CanvasRenderer: React.FC<CanvasRendererProps> = ({
   onCanvasContextMenu,
   onCloseContextMenu,
   canvasRef: externalCanvasRef,
-  onOpenStyleEditor // Changed from onElementDoubleClick
+  onOpenStyleEditor
 }) => {
   const localCanvasRef = useRef<HTMLDivElement>(null);
   const canvasRef = (externalCanvasRef || localCanvasRef) as React.RefObject<HTMLDivElement>;
@@ -39,13 +39,7 @@ const CanvasRenderer: React.FC<CanvasRendererProps> = ({
     onCanvasContextMenu(e.clientX, e.clientY);
   }
 };
-  // Handle canvas click to close context menu
-  const handleCanvasClick = (e: React.MouseEvent) => {
-    // Only handle direct clicks on the canvas, not on elements
-    if (e.target === e.currentTarget && onCloseContextMenu) {
-      onCloseContextMenu();
-    }
-  };
+
   
   return (
   <div 

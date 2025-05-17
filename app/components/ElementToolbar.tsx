@@ -1,15 +1,12 @@
 import React, { useState } from 'react';
 import { Element } from '../types/template';
-import ShapeSelector from './ShapeSelector';
 
 interface ElementToolbarProps {
   onAddElement: (elementType: string) => void;
-  onAddShape: (shapeType: string) => void;
 }
 
-const ElementToolbar: React.FC<ElementToolbarProps> = ({ onAddElement, onAddShape }) => {
+const ElementToolbar: React.FC<ElementToolbarProps> = ({ onAddElement }) => {
   const [hoveredElement, setHoveredElement] = useState<string | null>(null);
-  const [showShapeSelector, setShowShapeSelector] = useState(false);
 
   const elementTypes = [
     { 
@@ -51,15 +48,6 @@ const ElementToolbar: React.FC<ElementToolbarProps> = ({ onAddElement, onAddShap
       )
     },
     { 
-      type: 'shape', 
-      label: 'Shape', 
-      icon: (
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <path d="M12 3L20 7.5V16.5L12 21L4 16.5V7.5L12 3Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-        </svg>
-      )
-    },
-    { 
       type: 'video', 
       label: 'Video', 
       icon: (
@@ -68,58 +56,42 @@ const ElementToolbar: React.FC<ElementToolbarProps> = ({ onAddElement, onAddShap
           <path d="M10 9L15 12L10 15V9Z" fill="currentColor"/>
         </svg>
       )
+    },
+    { 
+      type: 'shape', 
+      label: 'Shape', 
+      icon: (
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M3 6H21V18H3V6Z" stroke="currentColor" strokeWidth="2"/>
+          <path d="M12 6L21 18H3L12 6Z" stroke="currentColor" strokeWidth="2"/>
+        </svg>
+      )
     }
   ];
 
-  const handleElementClick = (elementType: string) => {
-    if (elementType === 'shape') {
-      setShowShapeSelector(true);
-    } else {
-      onAddElement(elementType);
-    }
-  };
-
-  const handleSelectShape = (shapeType: string) => {
-    onAddShape(shapeType);
-    setShowShapeSelector(false);
-  };
-
   return (
-    <div className="element-toolbar-container">
-      <div className="element-toolbar">
-        {elementTypes.map((element) => (
-          <div key={element.type} className="element-button-container">
-            <button
-              className="element-button"
-              onClick={() => handleElementClick(element.type)}
-              onMouseEnter={() => setHoveredElement(element.type)}
-              onMouseLeave={() => setHoveredElement(null)}
-              title={element.label}
-            >
-              {element.icon}
-            </button>
-            
-            {hoveredElement === element.type && (
-              <div className="element-tooltip">
-                {element.label}
-              </div>
-            )}
-          </div>
-        ))}
-      </div>
-
-      {showShapeSelector && (
-        <ShapeSelector 
-          onSelectShape={handleSelectShape} 
-          onClose={() => setShowShapeSelector(false)} 
-        />
-      )}
+    <div className="element-toolbar">
+      {elementTypes.map((element) => (
+        <div key={element.type} className="element-button-container">
+          <button
+            className="element-button"
+            onClick={() => onAddElement(element.type)}
+            onMouseEnter={() => setHoveredElement(element.type)}
+            onMouseLeave={() => setHoveredElement(null)}
+            title={element.label}
+          >
+            {element.icon}
+          </button>
+          
+          {hoveredElement === element.type && (
+            <div className="element-tooltip">
+              {element.label}
+            </div>
+          )}
+        </div>
+      ))}
 
       <style jsx>{`
-        .element-toolbar-container {
-          position: relative;
-        }
-        
         .element-toolbar {
           display: flex;
           flex-direction: row;
@@ -179,18 +151,18 @@ const ElementToolbar: React.FC<ElementToolbarProps> = ({ onAddElement, onAddShap
         }
 
         .element-tooltip:before {
-            content: '';
-            position: absolute;
-            left: 50%;
-            top: -4px;
-            transform: translateX(-50%);
-            border-left: 4px solid transparent;
-            border-right: 4px solid transparent;
-            border-bottom: 4px solid #333;
-          }
-        `}</style>
-      </div>
-    );
+          content: '';
+          position: absolute;
+          left: 50%;
+          top: -4px;
+          transform: translateX(-50%);
+          border-left: 4px solid transparent;
+          border-right: 4px solid transparent;
+          border-bottom: 4px solid #333;
+        }
+      `}</style>
+    </div>
+  );
 };
 
 export default ElementToolbar;

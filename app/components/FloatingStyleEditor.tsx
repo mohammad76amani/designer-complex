@@ -321,127 +321,132 @@ const renderSelect = (
   );
   
   // Render content tab
-  const renderContentTab = () => (
-    <div className="tab-content">
-      {/* Only show text tab for text elements */}
-      {(element.type === 'button' || element.type === 'paragraph' || element.type === 'heading') && (
-        <div className="control-group">
-          <h4>Text Content</h4>
-          {renderTextArea('Content', element.content)}
-        </div>
-      )}
-      
-      {/* Button-specific controls */}
-      {element.type === 'button' && (
-        <div className="control-group">
-          <h4>Button Properties</h4>
-          {renderTextInput('Link URL', 'href', element.href || '')}
-          
-          {/* Add target attribute - not in the original template */}
-          {renderSelect('Open Link In', 'target', 
-            element.target !== undefined ? element.target : '_self', [
-              { value: '_self', label: 'Same Window' },
-              { value: '_blank', label: 'New Window' }
-            ])}
-        </div>
-      )}
-      
-      {/* Image-specific controls */}
-      {element.type === 'image' && (
-        <div className="control-group">
-          <h4>Image Properties</h4>
-          {renderTextInput('Image URL', 'src', element.src || '')}
-          {renderTextInput('Alt Text', 'alt', element.alt || '')}
-          
-          {/* Add object-fit property - not in the original template */}
-          {renderSelect('Image Fit', 'objectFit', 
-            element.style.objectFit !== undefined ? element.style.objectFit : 'cover', [
-              { value: 'cover', label: 'Cover' },
-              { value: 'contain', label: 'Contain' },
-              { value: 'fill', label: 'Fill' },
-              { value: 'none', label: 'None' }
-            ])}
-        </div>
-      )}
-      
-      {/* Video-specific controls */}
-      {element.type === 'video' && (
-        <div className="control-group">
-          <h4>Video Properties</h4>
-          {renderTextInput('Video URL', 'videoSrc', element.videoSrc || '')}
-          
-          <div className="style-control">
-            <label>Video Options</label>
-            <div className="checkbox-group">
-              <label className="checkbox-label">
-                <input 
-                  type="checkbox" 
-                  checked={element.autoplay || false} 
-                  onChange={(e) => updateAttribute('autoplay', e.target.checked)}
-                />
-                Autoplay
-              </label>
-              
-              <label className="checkbox-label">
-                <input 
-                  type="checkbox" 
-                  checked={element.loop || false} 
-                  onChange={(e) => updateAttribute('loop', e.target.checked)}
-                />
-                Loop
-              </label>
-              
-              <label className="checkbox-label">
-                <input 
-                  type="checkbox" 
-                  checked={element.muted || false} 
-                  onChange={(e) => updateAttribute('muted', e.target.checked)}
-                />
-                Muted
-              </label>
-              
-              <label className="checkbox-label">
-                <input 
-                  type="checkbox" 
-                  checked={element.controls || true} 
-                  onChange={(e) => updateAttribute('controls', e.target.checked)}
-                />
-                Show Controls
-              </label>
-            </div>
+ const renderContentTab = () => (
+  <div className="tab-content">
+    {/* Only show text tab for text elements */}
+    {(element.type === 'button' || element.type === 'paragraph' || element.type === 'heading') && (
+      <div className="control-group">
+        <h4>Text Content</h4>
+        {renderTextArea('Content', element.content)}
+      </div>
+    )}
+    
+    {/* Button-specific controls */}
+    {element.type === 'button' && (
+      <div className="control-group">
+        <h4>Button Properties</h4>
+        {renderTextInput('Link URL', 'href', element.href || '')}
+        
+        {/* Add target attribute */}
+        {renderSelect('Open Link In', 'target', 
+          element.target !== undefined ? element.target : '_self', [
+            { value: '_self', label: 'Same Window' },
+            { value: '_blank', label: 'New Window' }
+          ])}
+      </div>
+    )}
+    
+    {/* Image-specific controls */}
+    {element.type === 'image' && (
+      <div className="control-group">
+        <h4>Image Properties</h4>
+        {renderTextInput('Image URL', 'src', element.src || '')}
+        {renderTextInput('Alt Text', 'alt', element.alt || '')}
+        
+        {/* Add object-fit property */}
+        {renderSelect('Image Fit', 'objectFit', 
+          element.style.objectFit !== undefined ? element.style.objectFit : 'cover', [
+            { value: 'cover', label: 'Cover' },
+            { value: 'contain', label: 'Contain' },
+            { value: 'fill', label: 'Fill' },
+            { value: 'none', label: 'None' }
+          ])}
+      </div>
+    )}
+    
+    {/* Video-specific controls */}
+    {element.type === 'video' && (
+      <div className="control-group">
+        <h4>Video Properties</h4>
+        {renderTextInput('Video URL', 'videoSrc', element.videoSrc || '')}
+        
+        <div className="style-control">
+          <label>Video Options</label>
+          <div className="checkbox-group">
+            <label className="checkbox-label">
+              <input 
+                type="checkbox" 
+                checked={element.autoplay || false} 
+                onChange={(e) => updateAttribute('autoplay', e.target.checked)}
+              />
+              Autoplay
+            </label>
+            
+            <label className="checkbox-label">
+              <input 
+                type="checkbox" 
+                checked={element.loop || false} 
+                onChange={(e) => updateAttribute('loop', e.target.checked)}
+              />
+              Loop
+            </label>
+            
+            <label className="checkbox-label">
+              <input 
+                type="checkbox" 
+                checked={element.muted || false} 
+                onChange={(e) => updateAttribute('muted', e.target.checked)}
+              />
+              Muted
+            </label>
+            
+            <label className="checkbox-label">
+              <input 
+                type="checkbox" 
+                checked={element.controls || true} 
+                onChange={(e) => updateAttribute('controls', e.target.checked)}
+              />
+              Show Controls
+            </label>
           </div>
-          
-          {/* Add object-fit property */}
-          {renderSelect('Video Fit', 'objectFit', 
-            element.style.objectFit !== undefined ? element.style.objectFit : 'cover', [
-              { value: 'cover', label: 'Cover' },
-              { value: 'contain', label: 'Contain' },
-              { value: 'fill', label: 'Fill' },
-              { value: 'none', label: 'None' }
-            ])}
         </div>
-      )}
-      
-      {/* Shape-specific controls */}
-      {element.type === 'shape' && (
-        <div className="control-group">
-          <h4>Shape Properties</h4>
-          {renderSelect('Shape Type', 'shapeType', 
-            element.shapeType || 'rectangle', [
-              { value: 'rectangle', label: 'Rectangle' },
-              { value: 'circle', label: 'Circle' },
-              { value: 'triangle', label: 'Triangle' },
-              { value: 'arrow', label: 'Arrow' },
-              { value: 'star', label: 'Star' },
-              { value: 'hexagon', label: 'Hexagon' },
-              { value: 'line', label: 'Line' },
-              { value: 'heart', label: 'Heart' },
-              { value: 'cloud', label: 'Cloud' }
-            ])}
+        
+        {/* Add object-fit property */}
+        {renderSelect('Video Fit', 'objectFit', 
+          element.style.objectFit !== undefined ? element.style.objectFit : 'cover', [
+            { value: 'cover', label: 'Cover' },
+            { value: 'contain', label: 'Contain' },
+            { value: 'fill', label: 'Fill' },
+            { value: 'none', label: 'None' }
+          ])}
+      </div>
+    )}
+    
+    {/* Shape-specific controls */}
+    {element.type === 'shape' && (
+      <div className="control-group">
+        <h4>Shape Properties</h4>
+        <div className="style-control">
+          <label>Shape Type</label>
+          <select 
+            value={element.shapeType || 'rectangle'} 
+            onChange={(e) => updateAttribute('shapeType', e.target.value)}
+          >
+            <option value="rectangle">Rectangle</option>
+            <option value="circle">Circle</option>
+            <option value="triangle">Triangle</option>
+            <option value="arrow">Arrow</option>
+            <option value="star">Star</option>
+            <option value="hexagon">Hexagon</option>
+            <option value="line">Line</option>
+            <option value="heart">Heart</option>
+            <option value="cloud">Cloud</option>
+          </select>
         </div>
-      )}
-    </div>
-  );
+      </div>
+    )}
+  </div>
+);
   
   // Render effects tab
   const renderEffectsTab = () => (

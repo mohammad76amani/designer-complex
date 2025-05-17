@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Template, Element } from '@/app/types/template';
 import CanvasRenderer from './CanvasRenderer';
 import ContextMenu from './ContextMenu';
@@ -6,11 +6,18 @@ import FloatingStyleEditor from './FloatingStyleEditor';
 import ElementToolbar from './ElementToolbar';
 import { DesignerRendererProps } from '@/app/types/template';
 
+// Define a history state type
+interface HistoryState {
+  elements: Element[];
+  selectedElementId: string | null;
+}
+
 const DesignerRenderer: React.FC<DesignerRendererProps> = ({ template }) => {
   // Find the designer section in the template
   const designerSection = template?.sections?.children?.sections?.find(
     section => section.type === 'designer'
   );
+  
   const [showStyleEditor, setShowStyleEditor] = useState<boolean>(false);
   const [selectedElement, setSelectedElement] = useState<Element | null>(null);
   const [elements, setElements] = useState<Element[]>(
@@ -18,174 +25,110 @@ const DesignerRenderer: React.FC<DesignerRendererProps> = ({ template }) => {
   );
   const [clipboard, setClipboard] = useState<Element | null>(null);
   
-  // Get default element style
-  const getDefaultElementStyle = () => {
-    return {
-      x: 100,
-      y: 100,
-      width: 200,
-      height: 100,
-      fontSize: 16,
-      fontWeight: 'normal',
-      color: '#000000',
-      backgroundColor: '#ffffff',
-      borderRadius: 0,
-      padding: 0,
-      textAlign: 'left',
-      zIndex: 1,
-      opacity: 1
-    };
-  };
+  // History management
+  const [history, setHistory] = useState<HistoryState[]>([]);
+  const [historyIndex, setHistoryIndex] = useState<number>(-1);
+  const [isUndoRedo, setIsUndoRedo] = useState<boolean>(false);
   
-  // Create a new element based on type
-  const createNewElement = (type: string, options?: any): Element => {
-    const baseStyle = getDefaultElementStyle();
-    const id = `${type}-${Date.now()}`;
+  // Add a new state to the history when elements change
+  useEffect(() => {
+    if (isUndoRedo) {
+      // If the change is from undo/redo, don't add to history
+      setIsUndoRedo(false);
+      return;
+    }
     
-    switch (type) {
-      case 'heading':
-        return {
-          id,
-          type,
-          content: 'New Heading',
-          style: {
-            ...baseStyle,
-            fontSize: 32,
-            fontWeight: 'bold'
-          }
-        };
-        
-      case 'paragraph':
-        return {
-          id,
-          type,
-          content: 'New paragraph text. Click to edit.',
-          style: {
-            ...baseStyle,
-            height: 150
-          }
-        };
-        
-      case 'button':
-        return {
-          id,
-          type,
-          content: 'Button',
-          href: '#',
-          style: {
-            ...baseStyle,
-            width: 120,
-            height: 40,
-            backgroundColor: '#3498db',
-            color: '#ffffff',
-            borderRadius: 4,
-            textAlign: 'center',
-            fontWeight: 'bold'
-          }
-        };
-        
-      case 'image':
-        return {
-          id,
-          type,
-          content: '',
-          src: 'https://via.placeholder.com/200x100',
-          alt: 'Placeholder image',
-          style: {
-            ...baseStyle,
-            backgroundColor: 'transparent'
-          }
-        };
-        
-      case 'video':
-        return {
-          id,
-          type,
-          content: '',
-          videoSrc: 'https://www.w3schools.com/html/mov_bbb.mp4',
-          controls: true,
-          style: {
-            ...baseStyle,
-            backgroundColor: '#000000'
-          }
-        };
-        
-      case 'shape':
-        const shapeType = options?.shapeType || 'rectangle';
-        return {
-          id,
-          type,
-          content: '',
-          shapeType,
-          style: {
-            ...baseStyle,
-            width: 100,
-            height: 100,
-            backgroundColor: shapeType === 'line' ? 'transparent' : '#3498db',
-            borderWidth: shapeType === 'line' ? 2 : 0,
-            borderStyle: shapeType === 'line' ? 'solid' : 'none',
-            borderColor: shapeType === 'line' ? '#3498db' : '#000000',
-            zIndex: 1
-          }
-        };
-        
-      default:
-        return {
-          id,
-          type,
-          content: 'Unknown element',
-          style: baseStyle
-        };
+    // Create a new history state
+    const newState: HistoryState = {
+      elements: [...elements],
+      selectedElementId: selectedElement?.id || null
+    };
+    
+    // If we're not at the end of the history, truncate it
+    if (historyIndex < history.length - 1) {
+      setHistory(prevHistory => prevHistory.slice(0, historyIndex + 1));
     }
-  };
+    
+    // Add the new state to history
+    setHistory(prevHistory => [...prevHistory, newState]);
+    setHistoryIndex(prevIndex => prevIndex + 1);
+  }, [elements]);
   
-  // Handle adding a new element
-  const handleAddElement = (elementType: string) => {
-    const newElement = createNewElement(elementType);
-    setElements([...elements, newElement]);
-    setSelectedElement(newElement);
-    setShowStyleEditor(true);
-  };
-  
-  // Handle adding a new shape
- const handleAddShape = (shapeType: string) => {
-  const newId = `shape-${Date.now()}`;
-  const canvasRect = canvasRef.current?.getBoundingClientRect();
-  
-  if (!canvasRect) return;
-  
-  // Create a new shape element positioned at the center of the canvas
-  const newElement: Element = {
-    id: newId,
-    type: 'shape',
-    shapeType: shapeType,
-    content: '',
-    style: {
-      x: canvasRect.width / 2 - 75, // Center horizontally
-      y: canvasRect.height / 2 - 75, // Center vertically
-      width: 150,
-      height: 150,
-      fontSize: 16,
-      fontWeight: 'normal',
-      color: '#000000',
-      backgroundColor: '#3498db',
-      borderRadius: 0,
-      padding: 0,
-      textAlign: 'left',
-      zIndex: 1,
-      opacity: 1,
-      borderWidth: 0,
-      borderStyle: 'none',
-      borderColor: '#000000'
+  // Undo function
+  const handleUndo = useCallback(() => {
+    if (historyIndex > 0) {
+      setIsUndoRedo(true);
+      const prevState = history[historyIndex - 1];
+      setElements(prevState.elements);
+      
+      // Update selected element
+      if (prevState.selectedElementId) {
+        const selectedEl = prevState.elements.find(el => el.id === prevState.selectedElementId);
+        setSelectedElement(selectedEl || null);
+      } else {
+        setSelectedElement(null);
+      }
+      
+      setHistoryIndex(historyIndex - 1);
     }
-  };
+  }, [history, historyIndex]);
   
-  // Add the new element to the canvas
-  setElements([...elements, newElement]);
+  // Redo function
+  const handleRedo = useCallback(() => {
+    if (historyIndex < history.length - 1) {
+      setIsUndoRedo(true);
+      const nextState = history[historyIndex + 1];
+      setElements(nextState.elements);
+      
+      // Update selected element
+      if (nextState.selectedElementId) {
+        const selectedEl = nextState.elements.find(el => el.id === nextState.selectedElementId);
+        setSelectedElement(selectedEl || null);
+      } else {
+        setSelectedElement(null);
+      }
+      
+      setHistoryIndex(historyIndex + 1);
+    }
+  }, [history, historyIndex]);
   
-  // Select the new element
-  setSelectedElement(newElement);
-};
+  // Initialize history with initial state
+  useEffect(() => {
+    const initialState: HistoryState = {
+      elements,
+      selectedElementId: null
+    };
+    setHistory([initialState]);
+    setHistoryIndex(0);
+  }, []);
+  
+  // Add keyboard shortcuts for undo/redo
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Check if we're in an input field
+      const isInputActive = document.activeElement instanceof HTMLInputElement ||
+        document.activeElement instanceof HTMLTextAreaElement;
+      
+      if (isInputActive) return;
+      
+      // Undo: Ctrl+Z or Cmd+Z
+      if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
+        e.preventDefault();
+        handleUndo();
+      }
+      
+      // Redo: Ctrl+Y or Ctrl+Shift+Z or Cmd+Shift+Z
+      if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) {
+        e.preventDefault();
+        handleRedo();
+      }
+    };
+    
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [handleUndo, handleRedo]);
 
   const handleOpenStyleEditor = (element: Element) => {
     setSelectedElement(element);
@@ -315,7 +258,6 @@ const DesignerRenderer: React.FC<DesignerRendererProps> = ({ template }) => {
   };
 
   // Function to paste the copied/cut element
-  // Update the pasteElement function to paste at the right-click position
   const pasteElement = () => {
     if (clipboard && canvasRef.current) {
       // Create a new ID for the pasted element
@@ -403,6 +345,134 @@ const DesignerRenderer: React.FC<DesignerRendererProps> = ({ template }) => {
     }
   }, [selectedElement, showStyleEditor]);
 
+  // Function to add a new element
+  const handleAddElement = (elementType: string) => {
+    const newId = `${elementType}-${Date.now()}`;
+    const canvasRect = canvasRef.current?.getBoundingClientRect();
+    
+    if (!canvasRect) return;
+    
+    // Default properties for all elements
+    const baseElement: Element = {
+      id: newId,
+      type: elementType,
+      content: '',
+      style: {
+        x: canvasRect.width / 2 - 100, // Center horizontally
+        y: canvasRect.height / 2 - 50, // Center vertically
+        width: 200,
+        height: 100,
+        fontSize: 16,
+        fontWeight: 'normal',
+        color: '#000000',
+        backgroundColor: '#ffffff',
+        borderRadius: 0,
+        padding: 0,
+        textAlign: 'left',
+        zIndex: 1,
+        opacity: 1,
+        borderWidth: 0,
+        borderStyle: 'none',
+        borderColor: '#000000',
+        boxShadowBlur: 0,
+        boxShadowSpread: 0,
+        boxShadowColor: 'rgba(0,0,0,0.2)'
+      }
+    };
+    
+    // Element-specific properties
+    let newElement: Element;
+    
+    switch (elementType) {
+      case 'heading':
+        newElement = {
+          ...baseElement,
+          content: 'New Heading',
+          style: {
+            ...baseElement.style,
+            fontSize: 32,
+            fontWeight: 'bold',
+            height: 50
+          }
+        };
+        break;
+        
+      case 'paragraph':
+        newElement = {
+          ...baseElement,
+          content: 'New paragraph text. Click to edit.',
+          style: {
+            ...baseElement.style,
+            height: 80
+          }
+        };
+        break;
+        
+      case 'button':
+        newElement = {
+          ...baseElement,
+          content: 'Button',
+          style: {
+            ...baseElement.style,
+            width: 120,
+            height: 40,
+            backgroundColor: '#3498db',
+            color: '#ffffff',
+            borderRadius: 4,
+            textAlign: 'center',
+            padding: 8
+          }
+        };
+        break;
+        
+      case 'image':
+        newElement = {
+          ...baseElement,
+          src: 'https://via.placeholder.com/200x100',
+          alt: 'Placeholder image',
+          style: {
+            ...baseElement.style,
+            objectFit: 'cover'
+          }
+        };
+        break;
+        
+      case 'video':
+        newElement = {
+          ...baseElement,
+          videoSrc: 'https://www.w3schools.com/html/mov_bbb.mp4',
+          controls: true,
+          style: {
+            ...baseElement.style,
+            objectFit: 'cover'
+          }
+        };
+        break;
+        
+      case 'shape':
+        newElement = {
+          ...baseElement,
+          shapeType: 'rectangle', // Default shape type
+          style: {
+            ...baseElement.style,
+            backgroundColor: '#3498db',
+            width: 150,
+            height: 150
+          }
+        };
+        break;
+        
+      default:
+        newElement = baseElement;
+    }
+    
+    // Add the new element to the canvas
+    setElements([...elements, newElement]);
+    
+    // Select the new element
+    setSelectedElement(newElement);
+  };
+
   return (
     <div className="designer-container" style={sectionStyle}>
       <div style={{ position: 'relative' }}>
@@ -418,7 +488,61 @@ const DesignerRenderer: React.FC<DesignerRendererProps> = ({ template }) => {
           <div>
             <h3 style={{ margin: 0 }}>Canvas Editor</h3>
           </div>
-          <div style={{ fontSize: '14px', color: '#666' }}>
+          <div style={{ 
+            display: 'flex', 
+            gap: '10px', 
+            alignItems: 'center' 
+          }}>
+            {/* Undo/Redo buttons */}
+            {/* Undo button start*/}
+            <button
+              onClick={handleUndo}
+              disabled={historyIndex <= 0}
+              style={{
+                padding: '5px 10px',
+                backgroundColor: historyIndex <= 0 ? '#e0e0e0' : '#3498db',
+                color: historyIndex <= 0 ? '#999' : 'white',
+                border: 'none',
+                borderRadius: '4px',
+                cursor: historyIndex <= 0 ? 'not-allowed' : 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '5px'
+              }}
+              title="Undo (Ctrl+Z)"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M3 10H16C18.7614 10 21 12.2386 21 15C21 17.7614 18.7614 20 16 20H12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                <path d="M7 6L3 10L7 14" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+              Undo
+            </button>
+            {/* Undo button end*/}
+            {/* Redo button start*/}
+            <button
+              onClick={handleRedo}
+              disabled={historyIndex >= history.length - 1}
+              style={{
+                padding: '5px 10px',
+                backgroundColor: historyIndex >= history.length - 1 ? '#e0e0e0' : '#3498db',
+                color: historyIndex >= history.length - 1 ? '#999' : 'white',
+                border: 'none',
+                borderRadius: '4px',
+                cursor: historyIndex >= history.length - 1 ? 'not-allowed' : 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '5px'
+              }}
+              title="Redo (Ctrl+Y or Ctrl+Shift+Z)"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M21 10H8C5.23858 10 3 12.2386 3 15C3 17.7614 5.23858 20 8 20H12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                <path d="M17 6L21 10L17 14" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+              Redo
+            </button>
+            {/* Redo button end*/}
+            {/* Copy button start*/}
             {clipboard && (
               <button
                 onClick={pasteElement}
@@ -429,19 +553,27 @@ const DesignerRenderer: React.FC<DesignerRendererProps> = ({ template }) => {
                   border: 'none',
                   borderRadius: '4px',
                   cursor: 'pointer',
-                  marginLeft: '10px'
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '5px'
                 }}
+                title="Paste (Ctrl+V)"
               >
-                Paste Element
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <rect x="5" y="3" width="14" height="18" rx="2" stroke="currentColor" strokeWidth="2"/>
+                  <path d="M9 7H15" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                  <path d="M9 11H15" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                  <path d="M9 15H13" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                </svg>
+                Paste
               </button>
             )}
           </div>
+          {/* Copy button end*/}
         </div>
 
-        <ElementToolbar 
-  onAddElement={handleAddElement} 
-  onAddShape={handleAddShape} 
-/>
+        {/* Element Toolbar */}
+        <ElementToolbar onAddElement={handleAddElement} />
 
         <CanvasRenderer 
           blocks={{ 
@@ -479,6 +611,21 @@ const DesignerRenderer: React.FC<DesignerRendererProps> = ({ template }) => {
             onClose={() => setShowStyleEditor(false)}
           />
         )}
+      </div>
+      
+      {/* History status indicator */}
+      <div style={{
+        position: 'absolute',
+        bottom: '10px',
+        right: '10px',
+        backgroundColor: 'rgba(0,0,0,0.6)',
+        color: 'white',
+        padding: '5px 10px',
+        borderRadius: '4px',
+        fontSize: '12px',
+        pointerEvents: 'none'
+      }}>
+        History: {historyIndex + 1}/{history.length}
       </div>
     </div>
   );
