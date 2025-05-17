@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {FloatingStyleEditorProps} from '../types/template';
 
-
 const FloatingStyleEditor: React.FC<FloatingStyleEditorProps> = ({ 
   element, 
   onUpdateElement,
@@ -51,7 +50,7 @@ const FloatingStyleEditor: React.FC<FloatingStyleEditorProps> = ({
   };
   
   // Update element attributes (src, href, alt)
-  const updateAttribute = (attribute: string, value: string) => {
+  const updateAttribute = (attribute: string, value: string | boolean) => {
     onUpdateElement({
       ...element,
       [attribute]: value
@@ -123,26 +122,35 @@ const FloatingStyleEditor: React.FC<FloatingStyleEditorProps> = ({
   );
   
   // Render select dropdown
-  const renderSelect = (
-    label: string, 
-    property: string, 
-    value: string, 
-    options: { value: string, label: string }[]
-  ) => (
-    <div className="style-control">
-      <label>{label}</label>
-      <select 
-        value={value} 
-        onChange={(e) => updateStyle(property, e.target.value)}
-      >
-        {options.map(option => (
-          <option key={option.value} value={option.value}>
-            {option.label}
-          </option>
-        ))}
-      </select>
-    </div>
-  );
+const renderSelect = (
+  label: string, 
+  property: string, 
+  value: string, 
+  options: { value: string, label: string }[]
+) => (
+  <div className="style-control">
+    <label>{label}</label>
+    <select 
+      value={value} 
+      onChange={(e) => {
+        if (property === 'shapeType') {
+          // For shapeType, we need to update the element attribute, not the style
+          console.log('Updating shapeType to:', e.target.value);
+          updateAttribute(property, e.target.value);
+        } else {
+          // For other properties, update the style as usual
+          updateStyle(property, e.target.value);
+        }
+      }}
+    >
+      {options.map(option => (
+        <option key={option.value} value={option.value}>
+          {option.label}
+        </option>
+      ))}
+    </select>
+  </div>
+);
   
   // Render text input
   const renderTextInput = (
@@ -177,13 +185,57 @@ const FloatingStyleEditor: React.FC<FloatingStyleEditorProps> = ({
     </div>
   );
   
+  // Define the renderShapeStyleTab function
+  const renderShapeStyleTab = () => {
+  if (element.type !== 'shape') return null;
+  
+  return (
+    <div className="control-group">
+      <h4>Shape Properties</h4>
+      {renderSelect('Shape Type', 'shapeType', 
+        element.shapeType || 'rectangle', [
+          { value: 'rectangle', label: 'Rectangle' },
+          { value: 'circle', label: 'Circle' },
+          { value: 'triangle', label: 'Triangle' },
+          { value: 'arrow', label: 'Arrow' },
+          { value: 'star', label: 'Star' },
+          { value: 'hexagon', label: 'Hexagon' },
+          { value: 'line', label: 'Line' },
+          { value: 'heart', label: 'Heart' },
+          { value: 'cloud', label: 'Cloud' }
+        ])}
+      
+      {renderColorPicker('Fill Color', 'backgroundColor', element.style.backgroundColor)}
+      
+      {/* For line shapes, we need special handling */}
+      {element.shapeType === 'line' && (
+        <>
+          {renderNumberInput('Line Width', 'borderWidth', 
+            element.style.borderWidth !== undefined ? element.style.borderWidth : 2, 
+            1, 20, 1, 'px')}
+          
+          {renderSelect('Line Style', 'borderStyle', 
+            element.style.borderStyle || 'solid', [
+              { value: 'solid', label: 'Solid' },
+              { value: 'dashed', label: 'Dashed' },
+              { value: 'dotted', label: 'Dotted' }
+            ])}
+          
+          {renderColorPicker('Line Color', 'borderColor', 
+            element.style.borderColor || '#000000')}
+        </>
+      )}
+    </div>
+  );
+};
+  
   // Render style tab content
   const renderStyleTab = () => (
     <div className="tab-content">
       {/* Background and Border - common to most elements */}
       <div className="control-group">
         <h4>Appearance</h4>
-        {renderColorPicker('Background', 'backgroundColor', element.style.backgroundColor)}
+        {element.type !== 'shape' && renderColorPicker('Background', 'backgroundColor', element.style.backgroundColor)}
         {renderNumberInput('Border Radius', 'borderRadius', element.style.borderRadius, 0, 100)}
         {renderNumberInput('Z-Index', 'zIndex', element.style.zIndex, 0, 1000, 1, '')}
         
@@ -231,22 +283,27 @@ const FloatingStyleEditor: React.FC<FloatingStyleEditorProps> = ({
         </div>
       )}
       
+      {/* Shape-specific controls */}
+      {element.type === 'shape' && renderShapeStyleTab()}
+      
       {/* Add border controls - not in the original template */}
-      <div className="control-group">
-        <h4>Border</h4>
-        {renderNumberInput('Border Width', 'borderWidth', 
-          element.style.borderWidth !== undefined ? element.style.borderWidth : 0, 
-          0, 20, 1, 'px')}
-        {renderSelect('Border Style', 'borderStyle', 
-          element.style.borderStyle !== undefined ? element.style.borderStyle : 'none', [
-            { value: 'none', label: 'None' },
-            { value: 'solid', label: 'Solid' },
-            { value: 'dashed', label: 'Dashed' },
-            { value: 'dotted', label: 'Dotted' }
-          ])}
-        {renderColorPicker('Border Color', 'borderColor', 
-          element.style.borderColor !== undefined ? element.style.borderColor : '#000000')}
-      </div>
+      {element.type !== 'shape' && (
+        <div className="control-group">
+          <h4>Border</h4>
+          {renderNumberInput('Border Width', 'borderWidth', 
+            element.style.borderWidth !== undefined ? element.style.borderWidth : 0, 
+            0, 20, 1, 'px')}
+          {renderSelect('Border Style', 'borderStyle', 
+            element.style.borderStyle !== undefined ? element.style.borderStyle : 'none', [
+              { value: 'none', label: 'None' },
+              { value: 'solid', label: 'Solid' },
+              { value: 'dashed', label: 'Dashed' },
+              { value: 'dotted', label: 'Dotted' }
+            ])}
+          {renderColorPicker('Border Color', 'borderColor', 
+            element.style.borderColor !== undefined ? element.style.borderColor : '#000000')}
+        </div>
+      )}
       
       {/* Add shadow controls - not in the original template */}
       <div className="control-group">
@@ -306,51 +363,126 @@ const FloatingStyleEditor: React.FC<FloatingStyleEditorProps> = ({
             ])}
         </div>
       )}
+      
+      {/* Video-specific controls */}
+      {element.type === 'video' && (
+        <div className="control-group">
+          <h4>Video Properties</h4>
+          {renderTextInput('Video URL', 'videoSrc', element.videoSrc || '')}
+          
+          <div className="style-control">
+            <label>Video Options</label>
+            <div className="checkbox-group">
+              <label className="checkbox-label">
+                <input 
+                  type="checkbox" 
+                  checked={element.autoplay || false} 
+                  onChange={(e) => updateAttribute('autoplay', e.target.checked)}
+                />
+                Autoplay
+              </label>
+              
+              <label className="checkbox-label">
+                <input 
+                  type="checkbox" 
+                  checked={element.loop || false} 
+                  onChange={(e) => updateAttribute('loop', e.target.checked)}
+                />
+                Loop
+              </label>
+              
+              <label className="checkbox-label">
+                <input 
+                  type="checkbox" 
+                  checked={element.muted || false} 
+                  onChange={(e) => updateAttribute('muted', e.target.checked)}
+                />
+                Muted
+              </label>
+              
+              <label className="checkbox-label">
+                <input 
+                  type="checkbox" 
+                  checked={element.controls || true} 
+                  onChange={(e) => updateAttribute('controls', e.target.checked)}
+                />
+                Show Controls
+              </label>
+            </div>
+          </div>
+          
+          {/* Add object-fit property */}
+          {renderSelect('Video Fit', 'objectFit', 
+            element.style.objectFit !== undefined ? element.style.objectFit : 'cover', [
+              { value: 'cover', label: 'Cover' },
+              { value: 'contain', label: 'Contain' },
+              { value: 'fill', label: 'Fill' },
+              { value: 'none', label: 'None' }
+            ])}
+        </div>
+      )}
+      
+      {/* Shape-specific controls */}
+      {element.type === 'shape' && (
+        <div className="control-group">
+          <h4>Shape Properties</h4>
+          {renderSelect('Shape Type', 'shapeType', 
+            element.shapeType || 'rectangle', [
+              { value: 'rectangle', label: 'Rectangle' },
+              { value: 'circle', label: 'Circle' },
+              { value: 'triangle', label: 'Triangle' },
+              { value: 'arrow', label: 'Arrow' },
+              { value: 'star', label: 'Star' },
+              { value: 'hexagon', label: 'Hexagon' },
+              { value: 'line', label: 'Line' },
+              { value: 'heart', label: 'Heart' },
+              { value: 'cloud', label: 'Cloud' }
+            ])}
+        </div>
+      )}
     </div>
   );
   
   // Render effects tab
-  // Render effects tab
-const renderEffectsTab = () => (
-  <div className="tab-content">
-    <div className="control-group">
-      <h4>Transform</h4>
-      {/* Rotation control */}
-      {renderNumberInput('Rotation', 'rotate', 
-        element.style.rotate !== undefined ? element.style.rotate : 0, 
-        0, 360, 1, 'deg')}
+  const renderEffectsTab = () => (
+    <div className="tab-content">
+      <div className="control-group">
+        <h4>Transform</h4>
+        {/* Rotation control */}
+        {renderNumberInput('Rotation', 'rotate', 
+          element.style.rotate !== undefined ? element.style.rotate : 0, 
+          0, 360, 1, 'deg')}
+        
+        {/* Scale control */}
+        {renderNumberInput('Scale', 'scale', 
+          element.style.scale !== undefined ? element.style.scale : 1, 
+          0.1, 3, 0.1, '')}
+      </div>
       
-      {/* Scale control */}
-      {renderNumberInput('Scale', 'scale', 
-        element.style.scale !== undefined ? element.style.scale : 1, 
-        0.1, 3, 0.1, '')}
-    </div>
-    
-    <div className="control-group">
-      <h4>Filters</h4>
-      {/* Blur filter - updated to use direct property */}
-      {renderNumberInput('Blur', 'blur', 
-        element.style.blur !== undefined ? element.style.blur : 0, 
-        0, 20, 0.5, 'px')}
+      <div className="control-group">
+        <h4>Filters</h4>
+        {/* Blur filter - updated to use direct property */}
+        {renderNumberInput('Blur', 'blur', 
+          element.style.blur !== undefined ? element.style.blur : 0, 
+          0, 20, 0.5, 'px')}
+        
+        {/* Brightness filter - updated to use direct property */}
+        {renderNumberInput('Brightness', 'brightness', 
+          element.style.brightness !== undefined ? element.style.brightness : 100, 
+          0, 200, 5, '%')}
+        
+        {/* Contrast filter - updated to use direct property */}
+        {renderNumberInput('Contrast', 'contrast', 
+          element.style.contrast !== undefined ? element.style.contrast : 100, 
+          0, 200, 5, '%')}
+      </div>
       
-      {/* Brightness filter - updated to use direct property */}
-      {renderNumberInput('Brightness', 'brightness', 
-        element.style.brightness !== undefined ? element.style.brightness : 100, 
-        0, 200, 5, '%')}
-      
-      {/* Contrast filter - updated to use direct property */}
-      {renderNumberInput('Contrast', 'contrast', 
-        element.style.contrast !== undefined ? element.style.contrast : 100, 
-        0, 200, 5, '%')}
+      <div className="control-group">
+        <h4>Animation</h4>
+        <p className="coming-soon">Animation options coming soon!</p>
+      </div>
     </div>
-    
-    <div className="control-group">
-      <h4>Animation</h4>
-      <p className="coming-soon">Animation options coming soon!</p>
-    </div>
-  </div>
-);
-
+  );
   
   return (
     <div 
@@ -370,7 +502,7 @@ const renderEffectsTab = () => (
     >
       <div className="editor-header">
         <h3>{element.type.charAt(0).toUpperCase() + element.type.slice(1)} Properties</h3>
-                <button className="close-button" onClick={onClose}>×</button>
+        <button className="close-button" onClick={onClose}>×</button>
       </div>
       
       <div className="editor-tabs">
@@ -616,6 +748,25 @@ const renderEffectsTab = () => (
           border-color: #0d6efd;
           outline: none;
           box-shadow: 0 0 0 2px rgba(13, 110, 253, 0.25);
+        }
+        
+        .checkbox-group {
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
+          margin-top: 4px;
+        }
+        
+        .checkbox-label {
+          display: flex;
+          align-items: center;
+          font-size: 12px;
+          color: #495057;
+          cursor: pointer;
+        }
+        
+        .checkbox-label input[type="checkbox"] {
+          margin-right: 8px;
         }
         
         .coming-soon {

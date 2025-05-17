@@ -3,21 +3,190 @@ import { Template, Element } from '@/app/types/template';
 import CanvasRenderer from './CanvasRenderer';
 import ContextMenu from './ContextMenu';
 import FloatingStyleEditor from './FloatingStyleEditor';
+import ElementToolbar from './ElementToolbar';
 import { DesignerRendererProps } from '@/app/types/template';
-
-
 
 const DesignerRenderer: React.FC<DesignerRendererProps> = ({ template }) => {
   // Find the designer section in the template
   const designerSection = template?.sections?.children?.sections?.find(
     section => section.type === 'designer'
   );
-const [showStyleEditor, setShowStyleEditor] = useState<boolean>(false);
+  const [showStyleEditor, setShowStyleEditor] = useState<boolean>(false);
   const [selectedElement, setSelectedElement] = useState<Element | null>(null);
   const [elements, setElements] = useState<Element[]>(
     designerSection?.blocks?.elements || []
   );
   const [clipboard, setClipboard] = useState<Element | null>(null);
+  
+  // Get default element style
+  const getDefaultElementStyle = () => {
+    return {
+      x: 100,
+      y: 100,
+      width: 200,
+      height: 100,
+      fontSize: 16,
+      fontWeight: 'normal',
+      color: '#000000',
+      backgroundColor: '#ffffff',
+      borderRadius: 0,
+      padding: 0,
+      textAlign: 'left',
+      zIndex: 1,
+      opacity: 1
+    };
+  };
+  
+  // Create a new element based on type
+  const createNewElement = (type: string, options?: any): Element => {
+    const baseStyle = getDefaultElementStyle();
+    const id = `${type}-${Date.now()}`;
+    
+    switch (type) {
+      case 'heading':
+        return {
+          id,
+          type,
+          content: 'New Heading',
+          style: {
+            ...baseStyle,
+            fontSize: 32,
+            fontWeight: 'bold'
+          }
+        };
+        
+      case 'paragraph':
+        return {
+          id,
+          type,
+          content: 'New paragraph text. Click to edit.',
+          style: {
+            ...baseStyle,
+            height: 150
+          }
+        };
+        
+      case 'button':
+        return {
+          id,
+          type,
+          content: 'Button',
+          href: '#',
+          style: {
+            ...baseStyle,
+            width: 120,
+            height: 40,
+            backgroundColor: '#3498db',
+            color: '#ffffff',
+            borderRadius: 4,
+            textAlign: 'center',
+            fontWeight: 'bold'
+          }
+        };
+        
+      case 'image':
+        return {
+          id,
+          type,
+          content: '',
+          src: 'https://via.placeholder.com/200x100',
+          alt: 'Placeholder image',
+          style: {
+            ...baseStyle,
+            backgroundColor: 'transparent'
+          }
+        };
+        
+      case 'video':
+        return {
+          id,
+          type,
+          content: '',
+          videoSrc: 'https://www.w3schools.com/html/mov_bbb.mp4',
+          controls: true,
+          style: {
+            ...baseStyle,
+            backgroundColor: '#000000'
+          }
+        };
+        
+      case 'shape':
+        const shapeType = options?.shapeType || 'rectangle';
+        return {
+          id,
+          type,
+          content: '',
+          shapeType,
+          style: {
+            ...baseStyle,
+            width: 100,
+            height: 100,
+            backgroundColor: shapeType === 'line' ? 'transparent' : '#3498db',
+            borderWidth: shapeType === 'line' ? 2 : 0,
+            borderStyle: shapeType === 'line' ? 'solid' : 'none',
+            borderColor: shapeType === 'line' ? '#3498db' : '#000000',
+            zIndex: 1
+          }
+        };
+        
+      default:
+        return {
+          id,
+          type,
+          content: 'Unknown element',
+          style: baseStyle
+        };
+    }
+  };
+  
+  // Handle adding a new element
+  const handleAddElement = (elementType: string) => {
+    const newElement = createNewElement(elementType);
+    setElements([...elements, newElement]);
+    setSelectedElement(newElement);
+    setShowStyleEditor(true);
+  };
+  
+  // Handle adding a new shape
+ const handleAddShape = (shapeType: string) => {
+  const newId = `shape-${Date.now()}`;
+  const canvasRect = canvasRef.current?.getBoundingClientRect();
+  
+  if (!canvasRect) return;
+  
+  // Create a new shape element positioned at the center of the canvas
+  const newElement: Element = {
+    id: newId,
+    type: 'shape',
+    shapeType: shapeType,
+    content: '',
+    style: {
+      x: canvasRect.width / 2 - 75, // Center horizontally
+      y: canvasRect.height / 2 - 75, // Center vertically
+      width: 150,
+      height: 150,
+      fontSize: 16,
+      fontWeight: 'normal',
+      color: '#000000',
+      backgroundColor: '#3498db',
+      borderRadius: 0,
+      padding: 0,
+      textAlign: 'left',
+      zIndex: 1,
+      opacity: 1,
+      borderWidth: 0,
+      borderStyle: 'none',
+      borderColor: '#000000'
+    }
+  };
+  
+  // Add the new element to the canvas
+  setElements([...elements, newElement]);
+  
+  // Select the new element
+  setSelectedElement(newElement);
+};
+
   const handleOpenStyleEditor = (element: Element) => {
     setSelectedElement(element);
     setShowStyleEditor(true);
@@ -83,6 +252,7 @@ const [showStyleEditor, setShowStyleEditor] = useState<boolean>(false);
       element
     });
   };
+  
   // Function to handle right-click on the canvas
   const handleCanvasContextMenu = (x: number, y: number) => {
     // Show context menu for the canvas (no element selected)
@@ -100,21 +270,21 @@ const [showStyleEditor, setShowStyleEditor] = useState<boolean>(false);
   };
 
   // Function to delete the element from context menu
-const deleteElement = () => {
-  if (contextMenu.element) {
-    const filteredElements = elements.filter(el => el.id !== contextMenu.element?.id);
-    setElements(filteredElements);
+  const deleteElement = () => {
+    if (contextMenu.element) {
+      const filteredElements = elements.filter(el => el.id !== contextMenu.element?.id);
+      setElements(filteredElements);
 
-    // If the deleted element was selected, clear selection
-    if (selectedElement && selectedElement.id === contextMenu.element.id) {
-      setSelectedElement(null);
-      // Also close the style editor if it was open
-      setShowStyleEditor(false);
+      // If the deleted element was selected, clear selection
+      if (selectedElement && selectedElement.id === contextMenu.element.id) {
+        setSelectedElement(null);
+        // Also close the style editor if it was open
+        setShowStyleEditor(false);
+      }
+
+      closeContextMenu();
     }
-
-    closeContextMenu();
-  }
-};
+  };
 
   const canvasRef = useRef<HTMLDivElement>(null) as React.RefObject<HTMLDivElement>;
 
@@ -225,13 +395,13 @@ const deleteElement = () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
   }, [selectedElement, elements, clipboard]);
-// Add this useEffect to ensure showStyleEditor is false when no element is selected
-useEffect(() => {
-  if (!selectedElement && showStyleEditor) {
-    setShowStyleEditor(false);
-  }
-}, [selectedElement, showStyleEditor]);
-
+  
+  // Add this useEffect to ensure showStyleEditor is false when no element is selected
+  useEffect(() => {
+    if (!selectedElement && showStyleEditor) {
+      setShowStyleEditor(false);
+    }
+  }, [selectedElement, showStyleEditor]);
 
   return (
     <div className="designer-container" style={sectionStyle}>
@@ -268,7 +438,12 @@ useEffect(() => {
           </div>
         </div>
 
-   <CanvasRenderer 
+        <ElementToolbar 
+  onAddElement={handleAddElement} 
+  onAddShape={handleAddShape} 
+/>
+
+        <CanvasRenderer 
           blocks={{ 
             ...blocks, 
             elements: elements 
@@ -283,7 +458,6 @@ useEffect(() => {
           onOpenStyleEditor={handleOpenStyleEditor}
         />
 
-
         {/* Render context menu when shown */}
         {contextMenu.show && (
           <ContextMenu 
@@ -297,15 +471,14 @@ useEffect(() => {
             canPaste={clipboard !== null}
           />
         )}
-{selectedElement && showStyleEditor && (
-  <FloatingStyleEditor 
-    element={selectedElement}
-    onUpdateElement={handleUpdateElement}
-    onClose={() => setShowStyleEditor(false)}
-  />
-)}
-
-
+        
+        {selectedElement && showStyleEditor && (
+          <FloatingStyleEditor 
+            element={selectedElement}
+            onUpdateElement={handleUpdateElement}
+            onClose={() => setShowStyleEditor(false)}
+          />
+        )}
       </div>
     </div>
   );

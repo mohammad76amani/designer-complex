@@ -1,7 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Element } from '../types/template';
 import { ElementRendererProps } from '../types/template';
-
+import ShapeElement from './elements/ShapeElement';
 
 const ElementRenderer: React.FC<ElementRendererProps> = ({ 
   element, 
@@ -49,25 +48,25 @@ const ElementRenderer: React.FC<ElementRendererProps> = ({
     
     return transforms.length ? transforms.join(' ') : 'none';
   };
-// Generate filter style if filter properties exist
-const generateFilter = () => {
-  const filters = [];
   
-  if (style.blur) {
-    filters.push(`blur(${style.blur}px)`);
-  }
-  
-  if (style.brightness && style.brightness !== 100) {
-    filters.push(`brightness(${style.brightness}%)`);
-  }
-  
-  if (style.contrast && style.contrast !== 100) {
-    filters.push(`contrast(${style.contrast}%)`);
-  }
-  
-  return filters.length ? filters.join(' ') : 'none';
-};
-
+  // Generate filter style if filter properties exist
+  const generateFilter = () => {
+    const filters = [];
+    
+    if (style.blur) {
+      filters.push(`blur(${style.blur}px)`);
+    }
+    
+    if (style.brightness && style.brightness !== 100) {
+      filters.push(`brightness(${style.brightness}%)`);
+    }
+    
+    if (style.contrast && style.contrast !== 100) {
+      filters.push(`contrast(${style.contrast}%)`);
+    }
+    
+    return filters.length ? filters.join(' ') : 'none';
+  };
   
   // Generate border style if border properties exist
   const generateBorder = () => {
@@ -86,15 +85,18 @@ const generateFilter = () => {
     fontSize: `${style.fontSize}px`,
     fontWeight: style.fontWeight,
     color: style.color,
-    backgroundColor: style.backgroundColor,
+    // Only apply backgroundColor if not a shape
+    backgroundColor: type === 'shape' ? 'transparent' : style.backgroundColor,
     borderRadius: `${style.borderRadius}px`,
     padding: `${style.padding}px`,
     textAlign: style.textAlign as 'left' | 'center' | 'right',
     zIndex: isDragging || isResizing ? 1000 : style.zIndex,
     boxSizing: 'border-box',
     cursor: isDragging ? 'grabbing' : 'grab',
-    border: generateBorder(),
-    boxShadow: generateBoxShadow(),
+    // Only apply border if not a shape
+    border: type === 'shape' ? 'none' : generateBorder(),
+    // Only apply box shadow if not a shape (shapes handle their own shadows)
+    boxShadow: type === 'shape' ? 'none' : generateBoxShadow(),
     userSelect: 'none',
     touchAction: 'none',
     // Add new style properties
@@ -102,7 +104,7 @@ const generateFilter = () => {
     letterSpacing: style.letterSpacing !== undefined ? `${style.letterSpacing}px` : 'normal',
     lineHeight: style.lineHeight !== undefined ? style.lineHeight : 'normal',
     transform: generateTransform(),
-    filter: generateFilter(),
+    filter: type === 'shape' ? 'none' : generateFilter(), // Shapes handle their own filters
   };
 
   // Handle mouse down for dragging
@@ -331,7 +333,7 @@ const generateFilter = () => {
           left: handle.left,
           right: handle.right,
           bottom: handle.bottom,
-          transform: handle.transform,
+                    transform: handle.transform,
           backgroundColor: '#3498db',
           borderRadius: '50%',
           cursor: handle.cursor,
@@ -343,66 +345,87 @@ const generateFilter = () => {
   };
   
   // Render different element types
-  const renderContent = () => {
-    switch (type) {
-      case 'button':
-        return (
-          <div style={{
-            width: '100%',
-            height: '100%',
-            display: 'flex',
-                        alignItems: 'center',
-            justifyContent: style.textAlign === 'center' ? 'center' : 
-                           style.textAlign === 'right' ? 'flex-end' : 'flex-start',
-            pointerEvents: 'none'
-          }}>
-            {content}
-          </div>
-        );
-        
-      case 'image':
-        return (
-          <img 
-            src={src} 
-            alt={alt || 'Image'} 
-            style={{
-              width: '100%', 
-              height: '100%', 
-              objectFit: style.objectFit as 'cover' | 'contain' | 'fill' | 'none' || 'cover',
-              borderRadius: `${style.borderRadius}px`,
-              pointerEvents: 'none',
-            }} 
-          />
-        );
-        
-      case 'paragraph':
-        return (
-          <p style={{
-            margin: 0, 
+const renderContent = () => {
+  switch (type) {
+    case 'button':
+      return (
+        <div style={{
+          width: '100%',
+          height: '100%',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: style.textAlign === 'center' ? 'center' : 
+                         style.textAlign === 'right' ? 'flex-end' : 'flex-start',
+          pointerEvents: 'none'
+        }}>
+          {content}
+        </div>
+      );
+      
+    case 'image':
+      return (
+        <img 
+          src={src} 
+          alt={alt || 'Image'} 
+          style={{
             width: '100%', 
+            height: '100%', 
+            objectFit: style.objectFit as 'cover' | 'contain' | 'fill' | 'none' || 'cover',
+            borderRadius: `${style.borderRadius}px`,
             pointerEvents: 'none',
-            textAlign: style.textAlign as 'left' | 'center' | 'right',
-          }}>
-            {content}
-          </p>
-        );
-        
-      case 'heading':
-        return (
-          <h2 style={{
-            margin: 0, 
+          }} 
+        />
+      );
+      
+    case 'paragraph':
+      return (
+        <p style={{
+          margin: 0, 
+          width: '100%', 
+          pointerEvents: 'none',
+          textAlign: style.textAlign as 'left' | 'center' | 'right',
+        }}>
+          {content}
+        </p>
+      );
+      
+    case 'heading':
+      return (
+        <h2 style={{
+          margin: 0, 
+          width: '100%', 
+          pointerEvents: 'none',
+          textAlign: style.textAlign as 'left' | 'center' | 'right',
+        }}>
+          {content}
+        </h2>
+      );
+      
+    case 'shape':
+      return <ShapeElement element={element} />;
+      
+    case 'video':
+      return (
+        <video 
+          src={element.videoSrc} 
+          controls={element.controls}
+          autoPlay={element.autoplay}
+          loop={element.loop}
+          muted={element.muted}
+          style={{
             width: '100%', 
+            height: '100%', 
+            objectFit: style.objectFit as 'cover' | 'contain' | 'fill' | 'none' || 'cover',
+            borderRadius: `${style.borderRadius}px`,
             pointerEvents: 'none',
-            textAlign: style.textAlign as 'left' | 'center' | 'right',
-          }}>
-            {content}
-          </h2>
-        );
-        
-      default:
-        return <div style={{pointerEvents: 'none'}}>Unknown element type: {type}</div>;
-    }
-  };
+          }} 
+        />
+      );
+      
+    default:
+      return <div style={{pointerEvents: 'none'}}>Unknown element type: {type}</div>;
+  }
+};
   
   return (
     <div 

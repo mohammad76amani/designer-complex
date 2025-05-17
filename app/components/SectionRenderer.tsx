@@ -26,7 +26,7 @@ const SectionRenderer: React.FC<SectionRendererProps> = ({ sectionKey, section }
 
   // Regular section rendering
   const { type, settings, blocks } = section;
-  
+   
   const sectionStyle: React.CSSProperties = {
     paddingTop: `${settings.paddingTop}px`,
     paddingBottom: `${settings.paddingBottom}px`,
@@ -36,6 +36,7 @@ const SectionRenderer: React.FC<SectionRendererProps> = ({ sectionKey, section }
     marginBottom: settings.marginBottom ? `${settings.marginBottom}px` : undefined,
     backgroundColor: settings.backgroundColor,
   };
+  
   
   return (
     <section 

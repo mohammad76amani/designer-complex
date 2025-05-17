@@ -90,6 +90,7 @@ export interface BlockSettings {
 /**
  * Element that can be placed on the canvas (button, image, text, etc.)
  */
+// Update the Element interface to include shape-specific properties
 export interface Element {
   id: string;
   type: string;
@@ -99,7 +100,16 @@ export interface Element {
   alt?: string;
   href?: string;
   target?: '_self' | '_blank';
+  // Shape-specific properties
+  shapeType?: string;
+  // Video-specific properties
+  videoSrc?: string;
+  controls?: boolean;
+  autoplay?: boolean;
+  loop?: boolean;
+  muted?: boolean;
 }
+
 
 /**
  * Style properties for elements
