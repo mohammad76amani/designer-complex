@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Template, Element } from '@/app/types/template';
 import CanvasRenderer from './CanvasRenderer';
 import ContextMenu from './ContextMenu';
@@ -18,7 +18,7 @@ const DesignerRenderer: React.FC<DesignerRendererProps> = ({ template }) => {
   const designerSection = template?.sections?.children?.sections?.find(
     section => section.type === 'designer'
   );
-  
+  const [selectedElementIds, setSelectedElementIds] = useState<string[]>([]);
   const [showStyleEditor, setShowStyleEditor] = useState<boolean>(false);
   const [selectedElement, setSelectedElement] = useState<Element | null>(null);
   const [elements, setElements] = useState<Element[]>(
@@ -52,7 +52,7 @@ const DesignerRenderer: React.FC<DesignerRendererProps> = ({ template }) => {
       setIsUndoRedo(false);
       return;
     }
-    
+
     // Skip if elements haven't actually changed
     const elementsChanged = JSON.stringify(elements) !== JSON.stringify(prevElementsRef.current);
     const selectedChanged = selectedElement?.id !== prevSelectedElementRef.current?.id;
@@ -80,6 +80,10 @@ const DesignerRenderer: React.FC<DesignerRendererProps> = ({ template }) => {
     setHistory(prevHistory => [...prevHistory, newState]);
     setHistoryIndex(prevIndex => prevIndex + 1);
   }, [elements, selectedElement, historyIndex, history.length, isUndoRedo]);
+  
+  const handleUpdateElements = (updatedElements: Element[]) => {
+    setElements(updatedElements);
+  };
   
   // Undo function
   const handleUndo = useCallback(() => {
@@ -119,6 +123,44 @@ const DesignerRenderer: React.FC<DesignerRendererProps> = ({ template }) => {
     }
   }, [history, historyIndex]);
   
+  const ungroup = (groupElement: Element) => {
+    if (groupElement.type !== 'group' || !groupElement.childIds) {
+      console.log("Not a group or no child elements");
+      return;
+    }
+    
+    console.log("Ungrouping:", groupElement);
+    
+    // Update the child elements to remove their parent reference and restore absolute positioning
+    const updatedElements = elements.map(el => {
+      if (el.parentId === groupElement.id) {
+        return {
+          ...el,
+          parentId: undefined,
+          style: {
+            ...el.style,
+            // Restore absolute positioning
+            x: el.style.x + groupElement.style.x,
+            y: el.style.y + groupElement.style.y
+          }
+        };
+      }
+      return el;
+    });
+    
+    // Remove the group element
+    const filteredElements = updatedElements.filter(el => el.id !== groupElement.id);
+    
+    // Update elements and selection
+    setElements(filteredElements);
+    
+    // Select all the child elements that were in the group
+    setSelectedElementIds(groupElement.childIds);
+    setSelectedElement(null);
+    
+    console.log("Group removed, children selected");
+  };
+
   // Add keyboard shortcuts for undo/redo
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -183,31 +225,60 @@ const DesignerRenderer: React.FC<DesignerRendererProps> = ({ template }) => {
   };
 
   // Function to handle element selection
-  const handleSelectElement = (element: Element) => {
-    setSelectedElement(element);
-    // Close context menu when selecting a new element
-    setContextMenu({ ...contextMenu, show: false });
-  };
 
-  // Function to update element position and size
-
-const handleUpdateElement = (updatedElement: Element) => {
-  console.log(`Updating element ID: ${updatedElement.id}`, updatedElement);
-  
-  // Create a new elements array to ensure React detects the change
-  const updatedElements = elements.map(el =>
-    el.id === updatedElement.id ? {...updatedElement} : el
-  );
-  
-  console.log('Updated elements array:', updatedElements);
-  setElements(updatedElements);
-
-  // Update the selected element reference as well
-  if (selectedElement && selectedElement.id === updatedElement.id) {
-    setSelectedElement({...updatedElement});
+const handleSelectElement = (element: Element | null, isMultiSelect: boolean = false) => {
+  if (!element) {
+    // If clicking on canvas, clear selection
+    setSelectedElement(null);
+    setSelectedElementIds([]);
+    return;
   }
+
+  if (isMultiSelect) {
+    // In multi-select mode, toggle the element in the selection
+    setSelectedElementIds(prev => {
+      if (prev.includes(element.id)) {
+        // If already selected, remove it
+        const newIds = prev.filter(id => id !== element.id);
+        // Update the selected element to the last one in the array or null
+        setSelectedElement(newIds.length > 0 
+          ? elements.find(el => el.id === newIds[newIds.length - 1]) || null 
+          : null);
+        return newIds;
+      } else {
+        // If not selected, add it
+        const newIds = [...prev, element.id];
+        setSelectedElement(element);
+        return newIds;
+      }
+    });
+  } else {
+    // Single selection mode
+    setSelectedElement(element);
+    setSelectedElementIds([element.id]);
+  }
+
+  // Close context menu when selecting a new element
+  setContextMenu({ ...contextMenu, show: false });
 };
 
+
+  // Function to update element position and size
+  const handleUpdateElement = (updatedElement: Element) => {
+    console.log(`Updating element ID: ${updatedElement.id}`, updatedElement);
+    
+    const updatedElements = elements.map(el =>
+      el.id === updatedElement.id ? updatedElement : el
+    );
+    
+    console.log('Updated elements array:', updatedElements);
+    setElements(updatedElements);
+
+    // Update the selected element reference as well
+    if (selectedElement && selectedElement.id === updatedElement.id) {
+      setSelectedElement(updatedElement);
+    }
+  };
 
   // Function to handle context menu
   const handleElementContextMenu = (element: Element, x: number, y: number) => {
@@ -316,6 +387,84 @@ const handleUpdateElement = (updatedElement: Element) => {
       closeContextMenu();
     }
   };
+  
+  const createGroup = () => {
+    // Only create a group if multiple elements are selected
+    if (selectedElementIds.length <= 1) {
+      console.log("Need at least 2 elements to create a group");
+      return;
+    }
+    
+    console.log("Creating group with elements:", selectedElementIds);
+    
+    // Get the selected elements
+    const selectedElements = elements.filter(el => selectedElementIds.includes(el.id));
+    
+    // Calculate the bounding box of all selected elements
+    let minX = Infinity, minY = Infinity;
+    let maxX = -Infinity, maxY = -Infinity;
+    
+    selectedElements.forEach(el => {
+      const x = el.style.x;
+      const y = el.style.y;
+      const width = typeof el.style.width === 'number' ? el.style.width : parseInt(el.style.width as string);
+      const height = typeof el.style.height === 'number' ? el.style.height : parseInt(el.style.height as string);
+      
+      minX = Math.min(minX, x);
+      minY = Math.min(minY, y);
+      maxX = Math.max(maxX, x + width);
+      maxY = Math.max(maxY, y + height);
+    });
+    
+    // Create a new group element
+    const groupId = `group-${Date.now()}`;
+    const groupElement = {
+      id: groupId,
+      type: 'group',
+      content: '',
+      childIds: selectedElementIds,
+      style: {
+        x: minX,
+        y: minY,
+        width: maxX - minX,
+        height: maxY - minY,
+        fontSize: 16,
+        fontWeight: 'normal',
+        color: '#000000',
+        backgroundColor: 'transparent',
+        borderRadius: 0,
+        padding: 0,
+        textAlign: 'left',
+        zIndex: Math.max(...selectedElements.map(el => el.style.zIndex || 0)) + 1
+      }
+    };
+    
+    // Update the child elements to reference their parent group and adjust their positions
+    const updatedElements = elements.map(el => {
+      if (selectedElementIds.includes(el.id)) {
+        return {
+          ...el,
+          parentId: groupId,
+          style: {
+            ...el.style,
+            // Make position relative to the group
+            x: el.style.x - minX,
+            y: el.style.y - minY
+          }
+        };
+      }
+      return el;
+    });
+    
+    // Add the group element to the elements array
+    setElements([...updatedElements, groupElement]);
+    
+    // Select only the group
+    setSelectedElementIds([groupId]);
+    setSelectedElement(groupElement);
+    
+    console.log("Group created:", groupElement);
+  };
 
   // Add keyboard shortcuts for copy, cut, paste
   useEffect(() => {
@@ -352,7 +501,40 @@ const handleUpdateElement = (updatedElement: Element) => {
       // Paste (Ctrl+V or Cmd+V)
       if ((e.ctrlKey || e.metaKey) && e.key === 'v' && clipboard) {
         e.preventDefault();
-        pasteElement();
+        
+        // Create a new ID for the pasted element
+        const newId = `${clipboard.id}-copy-${Date.now()}`;
+        
+        // Create a new element positioned near the original
+        const newElement: Element = {
+          ...clipboard,
+          id: newId,
+          style: {
+            ...clipboard.style,
+            // Offset slightly from the original position
+            x: clipboard.style.x + 20,
+            y: clipboard.style.y + 20
+          }
+        };
+        
+        // Add the new element to the canvas
+        setElements([...elements, newElement]);
+        
+        // Select the new element
+        setSelectedElement(newElement);
+      }
+      
+      // Group (Ctrl+G or Cmd+G)
+      if ((e.ctrlKey || e.metaKey) && e.key === 'g' && selectedElementIds.length > 1) {
+        e.preventDefault();
+        createGroup();
+      }
+      
+      // Ungroup (Ctrl+Shift+G or Cmd+Shift+G)
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'g' && 
+          selectedElement?.type === 'group') {
+        e.preventDefault();
+        ungroup(selectedElement);
       }
     };
 
@@ -360,142 +542,170 @@ const handleUpdateElement = (updatedElement: Element) => {
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [selectedElement, elements, clipboard]);
+  }, [selectedElement, elements, clipboard, selectedElementIds]);
   
-  // Add this useEffect to ensure showStyleEditor is false when no element is selected
-  useEffect(() => {
-    if (!selectedElement && showStyleEditor) {
-      setShowStyleEditor(false);
-    }
-  }, [selectedElement, showStyleEditor]);
-
-  // Function to add a new element
+  // Add a new element to the canvas
   const handleAddElement = (elementType: string) => {
-    const newId = `${elementType}-${Date.now()}`;
-    const canvasRect = canvasRef.current?.getBoundingClientRect();
+    // Get canvas dimensions
+    const canvasWidth = canvasRef.current?.clientWidth || 800;
+    const canvasHeight = canvasRef.current?.clientHeight || 600;
     
-    if (!canvasRect) return;
+    // Calculate center position
+    const centerX = canvasWidth / 2 - 100;
+    const centerY = canvasHeight / 2 - 50;
     
-    // Default properties for all elements
-    const baseElement: Element = {
-      id: newId,
-      type: elementType,
-      content: '',
-      style: {
-        x: canvasRect.width / 2 - 100, // Center horizontally
-        y: canvasRect.height / 2 - 50, // Center vertically
-        width: 200,
-        height: 100,
-        fontSize: 16,
-        fontWeight: 'normal',
-        color: '#000000',
-        backgroundColor: 'rgba(0,0,0,0.0)',
-        borderRadius: 0,
-        padding: 0,
-        textAlign: 'left',
-        zIndex: 1,
-        opacity: 1,
-        borderWidth: 0,
-        borderStyle: 'none',
-        borderColor: '#000000',
-        boxShadowBlur: 0,
-        boxShadowSpread: 0,
-        boxShadowColor: 'rgba(0,0,0,0.2)',
-      
-      },
-      // Add default animation config
-      animation: {
-        hover: 'none',
-        click: 'none'
-      }
-    };
-    
-    // Element-specific properties
+    // Create a new element based on type
     let newElement: Element;
     
     switch (elementType) {
       case 'heading':
         newElement = {
-          ...baseElement,
-          content: 'Heading Text',
+          id: `heading-${Date.now()}`,
+          type: 'heading',
+          content: 'New Heading',
           style: {
-            ...baseElement.style,
-            fontSize: 32,
+            x: centerX,
+            y: centerY,
+            width: 200,
+            height: 50,
+            fontSize: 24,
             fontWeight: 'bold',
-            height: 60
+            color: '#000000',
+            backgroundColor: 'transparent',
+            borderRadius: 0,
+            padding: 0,
+            textAlign: 'left',
+            zIndex: elements.length + 1
           }
         };
         break;
         
       case 'paragraph':
         newElement = {
-          ...baseElement,
-          content: 'This is a paragraph of text. Click to edit.',
+          id: `paragraph-${Date.now()}`,
+          type: 'paragraph',
+          content: 'New paragraph text. Double-click to edit.',
           style: {
-            ...baseElement.style,
-            height: 150
+            x: centerX,
+            y: centerY,
+            width: 300,
+            height: 100,
+            fontSize: 16,
+            fontWeight: 'normal',
+            color: '#000000',
+            backgroundColor: 'transparent',
+            borderRadius: 0,
+            padding: 0,
+            textAlign: 'left',
+            zIndex: elements.length + 1
           }
         };
         break;
         
       case 'button':
         newElement = {
-          ...baseElement,
-          content: 'Button',
+          id: `button-${Date.now()}`,
+          type: 'button',
+          content: 'Click Me',
+          href: '#',
           style: {
-            ...baseElement.style,
-            backgroundColor: '#3498db',
+            x: centerX,
+            y: centerY,
+            width: 120,
+            height: 40,
+            fontSize: 16,
+            fontWeight: 'bold',
             color: '#ffffff',
+            backgroundColor: '#3498db',
             borderRadius: 4,
-            padding: 10,
+            padding: 0,
             textAlign: 'center',
-            height: 50
-          },
-          href: '#'
+            zIndex: elements.length + 1
+          }
         };
         break;
         
       case 'image':
         newElement = {
-          ...baseElement,
+          id: `image-${Date.now()}`,
+          type: 'image',
+          content: '',
+          src: 'https://via.placeholder.com/300x200',
+          alt: 'Placeholder image',
           style: {
-            ...baseElement.style,
-            height: 200
-          },
-          src: 'https://via.placeholder.com/400x200',
-          alt: 'Placeholder image'
+            x: centerX,
+            y: centerY,
+            width: 300,
+            height: 200,
+            fontSize: 16,
+            fontWeight: 'normal',
+            color: '#000000',
+            backgroundColor: '#f0f0f0',
+            borderRadius: 0,
+            padding: 0,
+            textAlign: 'center',
+            zIndex: elements.length + 1,
+            objectFit: 'cover'
+          }
         };
         break;
         
       case 'video':
         newElement = {
-          ...baseElement,
-          style: {
-            ...baseElement.style,
-            height: 200
-          },
+          id: `video-${Date.now()}`,
+          type: 'video',
+          content: '',
           videoSrc: 'https://www.w3schools.com/html/mov_bbb.mp4',
           controls: true,
           autoplay: false,
           loop: false,
-          muted: true
+          muted: false,
+          style: {
+            x: centerX,
+            y: centerY,
+            width: 320,
+            height: 240,
+            fontSize: 16,
+            fontWeight: 'normal',
+            color: '#000000',
+            backgroundColor: '#000000',
+            borderRadius: 0,
+            padding: 0,
+            textAlign: 'center',
+            zIndex: elements.length + 1,
+            objectFit: 'contain'
+          }
         };
         break;
         
       case 'shape':
         newElement = {
-          ...baseElement,
+          id: `shape-${Date.now()}`,
+          type: 'shape',
+          content: '',
+          shapeType: 'rectangle',
           style: {
-            ...baseElement.style,
-            backgroundColor: '',
-            borderRadius: 0
-          },
-          shapeType: 'triangle' // Default shape type
+            x: centerX,
+            y: centerY,
+            width: 150,
+            height: 150,
+            fontSize: 16,
+            fontWeight: 'normal',
+            color: '#000000',
+            backgroundColor: '#e74c3c',
+            borderRadius: 0,
+            padding: 0,
+            textAlign: 'center',
+            zIndex: elements.length + 1,
+            borderWidth: 0,
+            borderStyle: 'none',
+            borderColor: '#000000'
+          }
         };
         break;
         
       default:
-        newElement = baseElement;
+        return;
     }
     
     // Add the new element to the canvas
@@ -503,113 +713,111 @@ const handleUpdateElement = (updatedElement: Element) => {
     
     // Select the new element
     setSelectedElement(newElement);
+    setSelectedElementIds([newElement.id]);
   };
-  return (
-    <div className="designer-container" style={sectionStyle}>
-      <div style={{ position: 'relative' }}>
-        <div style={{
-          padding: '10px',
-          backgroundColor: '#f0f0f0',
-          borderRadius: '8px 8px 0 0',
-          borderBottom: '1px solid #ddd',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center'
-        }}>
-          <div>
-            <h3 style={{ margin: 0 }}>Canvas Editor</h3>
-          </div>
-          <div style={{ fontSize: '14px', color: '#666', display: 'flex', gap: '10px' }}>
-            <button
-              onClick={handleUndo}
-              disabled={historyIndex <= 0}
-              style={{
-                padding: '5px 10px',
-                backgroundColor: historyIndex <= 0 ? '#e0e0e0' : '#3498db',
-                color: 'white',
-                border: 'none',
-                borderRadius: '4px',
-                cursor: historyIndex <= 0 ? 'not-allowed' : 'pointer',
-                opacity: historyIndex <= 0 ? 0.7 : 1
-              }}
-            >
-              Undo
-            </button>
-            <button
-              onClick={handleRedo}
-              disabled={historyIndex >= history.length - 1}
-              style={{
-                padding: '5px 10px',
-                backgroundColor: historyIndex >= history.length - 1 ? '#e0e0e0' : '#3498db',
-                color: 'white',
-                border: 'none',
-                borderRadius: '4px',
-                cursor: historyIndex >= history.length - 1 ? 'not-allowed' : 'pointer',
-                opacity: historyIndex >= history.length - 1 ? 0.7 : 1
-              }}
-            >
-              Redo
-            </button>
-            {clipboard && (
-              <button
-                onClick={pasteElement}
-                style={{
-                  padding: '5px 10px',
-                  backgroundColor: '#3498db',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '4px',
-                  cursor: 'pointer'
-                }}
-              >
-                Paste Element
-              </button>
-            )}
-          </div>
+
+  // Add this useEffect to ensure showStyleEditor is false when no element is selected
+  useEffect(() => {
+    if (!selectedElement && showStyleEditor) {
+      setShowStyleEditor(false);
+    }
+  }, [selectedElement, showStyleEditor]);
+
+return (
+  <div className="designer-container" style={sectionStyle}>
+    <div style={{ position: 'relative' }}>
+      <div style={{
+        padding: '10px',
+        backgroundColor: '#f0f0f0',
+        borderRadius: '8px 8px 0 0',
+        borderBottom: '1px solid #ddd',
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center'
+      }}>
+        <div>
+          <h3 style={{ margin: 0 }}>Canvas Editor</h3>
         </div>
+        <div style={{ fontSize: '14px', color: '#666', display: 'flex', gap: '10px' }}>
+          {selectedElementIds.length > 1 && (
+            <button
+              onClick={createGroup}
+              style={{
+                padding: '5px 10px',
+                backgroundColor: '#2ecc71',
+                color: 'white',
+                border: 'none',
+                borderRadius: '4px',
+                cursor: 'pointer'
+              }}
+            >
+              Group Elements ({selectedElementIds.length})
+            </button>
+          )}
+          {clipboard && (
+            <button
+              onClick={pasteElement}
+              style={{
+                padding: '5px 10px',
+                backgroundColor: '#3498db',
+                color: 'white',
+                border: 'none',
+                borderRadius: '4px',
+                cursor: 'pointer'
+              }}
+            >
+              Paste Element
+            </button>
+          )}
+        </div>
+      </div>
 
-        {/* Element toolbar for adding new elements */}
-        <ElementToolbar onAddElement={handleAddElement} />
-
-        <CanvasRenderer 
-          blocks={{ 
-            ...blocks, 
-            elements: elements 
-          }} 
-          onSelectElement={handleSelectElement}
-          selectedElementId={selectedElement?.id}
-          onUpdateElement={handleUpdateElement}
-          onElementContextMenu={handleElementContextMenu}
-          onCanvasContextMenu={handleCanvasContextMenu}
-          onCloseContextMenu={closeContextMenu}
-          canvasRef={canvasRef}
-          onOpenStyleEditor={handleOpenStyleEditor}
-        />
-
-        {/* Render context menu when shown */}
-        {contextMenu.show && (
-          <ContextMenu 
-            x={contextMenu.x}
-            y={contextMenu.y}
-            onClose={closeContextMenu}
-            onDelete={deleteElement}
-            onCopy={copyElement}
-            onCut={cutElement}
-            onPaste={pasteElement}
-            canPaste={clipboard !== null}
-          />
-        )}
-        
-        {selectedElement && showStyleEditor && (
-          <FloatingStyleEditor 
-            element={selectedElement}
+        <div style={{ position: 'relative' }}>
+          <ElementToolbar onAddElement={handleAddElement} />
+          
+          <CanvasRenderer 
+            blocks={{ 
+              ...blocks, 
+              elements: elements 
+            }} 
+            onSelectElement={handleSelectElement}
+            selectedElementIds={selectedElementIds}
+            selectedElementId={selectedElement?.id}
             onUpdateElement={handleUpdateElement}
-            onClose={() => setShowStyleEditor(false)}
+            onUpdateElements={handleUpdateElements}
+            onElementContextMenu={handleElementContextMenu}
+            onCanvasContextMenu={handleCanvasContextMenu}
+            onCloseContextMenu={closeContextMenu}
+            canvasRef={canvasRef}
+            onOpenStyleEditor={handleOpenStyleEditor}
           />
-        )}
+
+          {/* Render context menu when shown */}
+          {contextMenu.show && (
+            <ContextMenu 
+              x={contextMenu.x}
+              y={contextMenu.y}
+              onClose={closeContextMenu}
+              onDelete={deleteElement}
+              onCopy={copyElement}
+              onCut={cutElement}
+              onPaste={pasteElement}
+              canPaste={clipboard !== null}
+            />
+          )}
+          
+          {selectedElement && showStyleEditor && (
+            <FloatingStyleEditor 
+              element={selectedElement}
+              onUpdateElement={handleUpdateElement}
+              onClose={() => setShowStyleEditor(false)}
+            />
+          )}
+        </div>
       </div>
     </div>
   );
 };
 
 export default DesignerRenderer;
+

@@ -1,7 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Element } from '../types/template';
 import { ElementRendererProps } from '../types/template';
+import VideoElement from './elements/VideoElement';
 import ShapeElement from './elements/ShapeElement';
+
 const ElementRenderer: React.FC<ElementRendererProps> = ({ 
   element, 
   onSelect,
@@ -9,7 +11,8 @@ const ElementRenderer: React.FC<ElementRendererProps> = ({
   onUpdateElement,
   canvasRef,
   onContextMenu,
-  onOpenStyleEditor
+  onOpenStyleEditor,
+  isInGroup = false
 }) => {
   const { id, type, content, style, src, alt, href, target } = element;
   const elementRef = useRef<HTMLDivElement>(null);
@@ -22,10 +25,6 @@ const ElementRenderer: React.FC<ElementRendererProps> = ({
   const [initialSize, setInitialSize] = useState({ width: 0, height: 0 });
   const [initialPosition, setInitialPosition] = useState({ x: 0, y: 0 });
   const [initialMousePosition, setInitialMousePosition] = useState({ x: 0, y: 0 });
-  
-  // State for hover and active (click) effects
-  const [isHovered, setIsHovered] = useState(false);
-  const [isActive, setIsActive] = useState(false);
   
   // Generate box shadow if shadow properties exist
   const generateBoxShadow = () => {
@@ -48,20 +47,6 @@ const ElementRenderer: React.FC<ElementRendererProps> = ({
     
     if (style.scale && style.scale !== 1) {
       transforms.push(`scale(${style.scale})`);
-    }
-    
-    // Apply hover scale effect if element has hover animation
-    if (isHovered && element.animation?.hover === 'scale-up') {
-      transforms.push('scale(1.05)');
-    }
-    
-    if (isHovered && element.animation?.hover === 'scale-down') {
-      transforms.push('scale(0.95)');
-    }
-    
-    // Apply click scale effect if element has click animation
-    if (isActive && element.animation?.click === 'scale-down') {
-      transforms.push('scale(0.9)');
     }
     
     return transforms.length ? transforms.join(' ') : 'none';
@@ -88,51 +73,10 @@ const ElementRenderer: React.FC<ElementRendererProps> = ({
   
   // Generate border style if border properties exist
   const generateBorder = () => {
-    // Apply hover border effect if element has hover animation
-    if (isHovered && element.animation?.hover === 'border') {
-      return `2px solid ${element.animation.hoverBorderColor || '#3498db'}`;
-    }
-    
     if (style.borderWidth && style.borderStyle && style.borderStyle !== 'none') {
       return `${style.borderWidth}px ${style.borderStyle} ${style.borderColor || '#000000'}`;
     }
-    
     return isSelected ? '2px solid #3498db' : 'none';
-  };
-  
-  // Get background color with hover/click effects
-  const getBackgroundColor = () => {
-    if (isActive && element.animation?.click === 'bg-color') {
-      return element.animation.clickBgColor || '#2980b9';
-    }
-    
-    if (isHovered && element.animation?.hover === 'bg-color') {
-      return element.animation.hoverBgColor || '#3498db';
-    }
-    
-    return style.backgroundColor;
-  };
-  
-  // Get text color with hover/click effects
-  const getTextColor = () => {
-    if (isActive && element.animation?.click === 'text-color') {
-      return element.animation.clickTextColor || '#ffffff';
-    }
-    
-    if (isHovered && element.animation?.hover === 'text-color') {
-      return element.animation.hoverTextColor || '#ffffff';
-    }
-    
-    return style.color;
-  };
-  
-  // Get box shadow with hover effect
-  const getBoxShadow = () => {
-    if (isHovered && element.animation?.hover === 'shadow') {
-      return '0 5px 15px rgba(0,0,0,0.2)';
-    }
-    
-    return generateBoxShadow();
   };
   
   const elementStyle: React.CSSProperties = {
@@ -143,16 +87,16 @@ const ElementRenderer: React.FC<ElementRendererProps> = ({
     height: typeof style.height === 'string' ? style.height : `${style.height}px`,
     fontSize: `${style.fontSize}px`,
     fontWeight: style.fontWeight,
-    color: getTextColor(),
-    backgroundColor: getBackgroundColor(),
+    color: style.color,
+    backgroundColor: style.backgroundColor,
     borderRadius: `${style.borderRadius}px`,
     padding: `${style.padding}px`,
     textAlign: style.textAlign as 'left' | 'center' | 'right',
     zIndex: isDragging || isResizing ? 1000 : style.zIndex,
     boxSizing: 'border-box',
-    cursor: isDragging ? 'grabbing' : 'grab',
+    cursor: isDragging ? 'grabbing' : (isInGroup ? 'default' : 'grab'),
     border: generateBorder(),
-    boxShadow: getBoxShadow(),
+    boxShadow: generateBoxShadow(),
     userSelect: 'none',
     touchAction: 'none',
     // Add new style properties
@@ -161,43 +105,41 @@ const ElementRenderer: React.FC<ElementRendererProps> = ({
     lineHeight: style.lineHeight !== undefined ? style.lineHeight : 'normal',
     transform: generateTransform(),
     filter: generateFilter(),
-    // Add transition for smooth animations
-    transition: 'all 0.2s ease',
+    pointerEvents: isInGroup ? 'none' : 'auto',
   };
 
-  // Handle mouse down for dragging
-  const handleMouseDown = (e: React.MouseEvent) => {
-    // Only respond to left mouse button (button 0)
-    if (e.button !== 0) return;
-    
-    e.preventDefault();
+  // Handle mouse down for dragging - don't allow dragging if in a group
+
+const handleMouseDown = (e: React.MouseEvent) => {
+  // Only respond to left mouse button (button 0)
+  if (e.button !== 0) return;
+  
+  // Prevent dragging if in a group
+  if (isInGroup) {
     e.stopPropagation();
-    
-    // Select the element
-    onSelect();
-    
-    // Start dragging
-    setIsDragging(true);
-    
-    // Calculate the offset from the mouse position to the element's top-left corner
-    if (elementRef.current) {
-      const rect = elementRef.current.getBoundingClientRect();
-      setDragOffset({
-        x: e.clientX - rect.left,
-        y: e.clientY - rect.top
-      });
-    }
-    
-    // Set active state for click animation
-    if (element.animation?.click) {
-      setIsActive(true);
-      
-      // Reset active state after a short delay (for animation)
-      setTimeout(() => {
-        setIsActive(false);
-      }, 300);
-    }
-  };
+    return;
+  }
+  
+  e.preventDefault();
+  e.stopPropagation();
+  
+  // Select the element, passing the multi-select flag if shift/ctrl is pressed
+  const isMultiSelect = e.shiftKey || e.ctrlKey || e.metaKey;
+  onSelect(isMultiSelect);
+  
+  // Start dragging
+  setIsDragging(true);
+  
+  // Calculate the offset from the mouse position to the element's top-left corner
+  if (elementRef.current) {
+    const rect = elementRef.current.getBoundingClientRect();
+    setDragOffset({
+      x: e.clientX - rect.left,
+      y: e.clientY - rect.top
+    });
+  }
+};
+
   
   // Handle mouse move for dragging
   const handleMouseMove = (e: MouseEvent) => {
@@ -308,10 +250,10 @@ const ElementRenderer: React.FC<ElementRendererProps> = ({
     setResizeHandle(null);
   };
   
-  // Handle resize start
+  // Handle resize start - don't allow resizing if in a group
   const handleResizeStart = (e: React.MouseEvent, handle: string) => {
     // Only respond to left mouse button (button 0)
-    if (e.button !== 0) return;
+    if (e.button !== 0 || isInGroup) return;
     
     e.preventDefault();
     e.stopPropagation();
@@ -340,22 +282,14 @@ const ElementRenderer: React.FC<ElementRendererProps> = ({
     }
   };
   
-  // Handle click - separate from mousedown to handle double-click for style editor
   const handleClick = (e: React.MouseEvent) => {
+    // We don't want to prevent default or stop propagation here
+    // because we still want the element to be selected
+    
     // If the element is already selected and we have an onOpenStyleEditor handler,
     // call it to open the style editor
     if (isSelected && onOpenStyleEditor) {
       onOpenStyleEditor();
-    }
-    
-    // Apply click animation
-    if (element.animation?.click) {
-      setIsActive(true);
-      
-      // Reset active state after a short delay (for animation)
-      setTimeout(() => {
-        setIsActive(false);
-      }, 300);
     }
   };
   
@@ -369,18 +303,6 @@ const ElementRenderer: React.FC<ElementRendererProps> = ({
     onContextMenu(element, e.clientX, e.clientY);
   };
   
-  // Handle mouse enter for hover animation
-  const handleMouseEnter = () => {
-    if (element.animation?.hover) {
-      setIsHovered(true);
-    }
-  };
-  
-  // Handle mouse leave to reset hover state
-  const handleMouseLeave = () => {
-    setIsHovered(false);
-  };
-  
   // Add and remove event listeners
   useEffect(() => {
     if (isDragging || isResizing) {
@@ -392,11 +314,11 @@ const ElementRenderer: React.FC<ElementRendererProps> = ({
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('mouseup', handleMouseUp);
     };
-    }, [isDragging, isResizing, resizeHandle, initialSize, initialPosition, initialMousePosition]);
+  }, [isDragging, isResizing, resizeHandle]);
   
   // Render resize handles
   const renderResizeHandles = () => {
-    if (!isSelected) return null;
+    if (!isSelected || isInGroup) return null;
     
     const handles = [
       { position: 'n', cursor: 'ns-resize', top: '-5px', left: '50%', width: '10px', height: '10px', transform: 'translateX(-50%)' },
@@ -434,88 +356,71 @@ const ElementRenderer: React.FC<ElementRendererProps> = ({
   
   // Render different element types
   const renderContent = () => {
-  switch (type) {
-    case 'button':
-      return (
-        <div style={{
-          width: '100%',
-          height: '100%',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: style.textAlign === 'center' ? 'center' : 
-                         style.textAlign === 'right' ? 'flex-end' : 'flex-start',
-          pointerEvents: 'none'
-        }}>
-          {content}
-        </div>
-      );
-      
-    case 'image':
-      return (
-        <img 
-          src={src} 
-          alt={alt || 'Image'} 
-          style={{
-            width: '100%', 
-            height: '100%', 
-            objectFit: style.objectFit as 'cover' | 'contain' | 'fill' | 'none' || 'cover',
-            borderRadius: `${style.borderRadius}px`,
-            pointerEvents: 'none',
-          }} 
-        />
-      );
-      
-    case 'paragraph':
-      return (
-        <p style={{
-          margin: 0, 
-          width: '100%', 
-          pointerEvents: 'none',
-          textAlign: style.textAlign as 'left' | 'center' | 'right',
-        }}>
-          {content}
-        </p>
-      );
-      
-    case 'heading':
-      return (
-        <h2 style={{
-          margin: 0, 
-          width: '100%', 
-          pointerEvents: 'none',
-          textAlign: style.textAlign as 'left' | 'center' | 'right',
-        }}>
-          {content}
-        </h2>
-      );
-      
-    case 'video':
-      return (
-        <video
-          src={element.videoSrc}
-          autoPlay={element.autoplay}
-          loop={element.loop}
-          muted={element.muted}
-          controls={element.controls}
-          style={{
+    switch (type) {
+      case 'button':
+        return (
+          <div style={{
             width: '100%',
             height: '100%',
-            objectFit: style.objectFit as 'cover' | 'contain' | 'fill' | 'none' || 'cover',
-            borderRadius: `${style.borderRadius}px`,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: style.textAlign === 'center' ? 'center' : 
+                           style.textAlign === 'right' ? 'flex-end' : 'flex-start',
+            pointerEvents: 'none'
+          }}>
+            {content}
+          </div>
+        );
+        
+      case 'image':
+        return (
+          <img 
+            src={src} 
+            alt={alt || 'Image'} 
+            style={{
+              width: '100%', 
+              height: '100%', 
+              objectFit: style.objectFit as 'cover' | 'contain' | 'fill' | 'none' || 'cover',
+              borderRadius: `${style.borderRadius}px`,
+              pointerEvents: 'none',
+            }} 
+          />
+        );
+        
+      case 'paragraph':
+        return (
+          <p style={{
+            margin: 0, 
+            width: '100%', 
             pointerEvents: 'none',
-          }}
-        />
-      );
-      
-  case 'shape':
-      console.log(`ElementRenderer rendering shape with type: ${element.shapeType} for element ID: ${element.id}`);
-      // Force a key change when shapeType changes to ensure re-rendering
-      return <ShapeElement key={`${element.id}-${element.shapeType}-${Date.now()}`} element={element} />;
-    
-    default:
-      return <div style={{pointerEvents: 'none'}}>Unknown element type: {type}</div>;
-  }
-};
+            textAlign: style.textAlign as 'left' | 'center' | 'right',
+          }}>
+            {content}
+          </p>
+        );
+        
+      case 'heading':
+        return (
+          <h2 style={{
+            margin: 0, 
+            width: '100%', 
+            pointerEvents: 'none',
+            textAlign: style.textAlign as 'left' | 'center' | 'right',
+          }}>
+            {content}
+          </h2>
+        );
+        
+      case 'video':
+        return <VideoElement element={element} />;
+        
+      case 'shape':
+        return <ShapeElement element={element} />;
+        
+      default:
+        return <div style={{pointerEvents: 'none'}}>Unknown element type: {type}</div>;
+    }
+  };
   
   return (
     <div 
@@ -524,11 +429,9 @@ const ElementRenderer: React.FC<ElementRendererProps> = ({
       onMouseDown={handleMouseDown}
       onClick={handleClick}
       onContextMenu={handleContextMenu}
-      onMouseEnter={handleMouseEnter}
-      onMouseLeave={handleMouseLeave}
       data-element-id={id}
       data-element-type={type}
-      className={`element-wrapper ${isDragging ? 'dragging' : ''} ${isResizing ? 'resizing' : ''}`}
+      className={`element-wrapper ${isDragging ? 'dragging' : ''} ${isResizing ? 'resizing' : ''} ${isInGroup ? 'in-group' : ''}`}
     >
       {renderContent()}
       {renderResizeHandles()}
@@ -537,4 +440,3 @@ const ElementRenderer: React.FC<ElementRendererProps> = ({
 };
 
 export default ElementRenderer;
-

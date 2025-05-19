@@ -137,20 +137,9 @@ export interface Element {
   autoplay?: boolean;
   loop?: boolean;
   muted?: boolean;
-  animation?: {
-    hover?: string;
-    hoverBgColor?: string;
-    hoverTextColor?: string;
-    hoverBorderColor?: string;
-    click?: string;
-    clickBgColor?: string;
-    clickTextColor?: string;
-    entrance?: {
-      type: string;
-      duration?: number;
-      delay?: number;
-    };
-  };
+  // Group-related properties
+  childIds?: string[];
+  parentId?: string;
 }
 
 
@@ -253,9 +242,11 @@ export interface FloatingStyleEditorProps {
  */
 export interface CanvasRendererProps {
   blocks: Blocks;
-  onSelectElement: (element: Element) => void;
+  onSelectElement: (element: Element | null, isMultiSelect?: boolean) => void;
   selectedElementId?: string;
+  selectedElementIds?: string[];
   onUpdateElement: (updatedElement: Element) => void;
+  onUpdateElements?: (updatedElements: Element[]) => void;
   onElementContextMenu: (element: Element, x: number, y: number) => void;
   onCanvasContextMenu?: (x: number, y: number) => void;
   onCloseContextMenu?: () => void;
@@ -289,8 +280,9 @@ export interface ElementRendererProps {
   canvasRef: React.RefObject<HTMLDivElement>;
   onContextMenu: (element: Element, x: number, y: number) => void;
   onOpenStyleEditor?: () => void;
-  isPreviewMode?: boolean;
+  isInGroup?: boolean;
 }
+
 
 /**
  * Props for ContextMenu component
