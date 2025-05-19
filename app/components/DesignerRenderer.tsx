@@ -5,6 +5,7 @@ import ContextMenu from './ContextMenu';
 import FloatingStyleEditor from './FloatingStyleEditor';
 import ElementToolbar from './ElementToolbar';
 import { DesignerRendererProps } from '@/app/types/template';
+import { getDefaultAnimationConfig } from '../utils/animationUtils';
 
 // Define a history state type
 interface HistoryState {
@@ -30,13 +31,39 @@ const DesignerRenderer: React.FC<DesignerRendererProps> = ({ template }) => {
   const [historyIndex, setHistoryIndex] = useState<number>(-1);
   const [isUndoRedo, setIsUndoRedo] = useState<boolean>(false);
   
-  // Add a new state to the history when elements change
+  // Initialize history with initial state - only run once
   useEffect(() => {
+    const initialState: HistoryState = {
+      elements,
+      selectedElementId: null
+    };
+    setHistory([initialState]);
+    setHistoryIndex(0);
+  }, []); // Empty dependency array to run only once
+  
+  // Add a new state to the history when elements change
+  // Use a ref to track previous elements to avoid infinite loops
+  const prevElementsRef = useRef<Element[]>([]);
+  const prevSelectedElementRef = useRef<Element | null>(null);
+  
+  useEffect(() => {
+    // Skip if this is from undo/redo
     if (isUndoRedo) {
-      // If the change is from undo/redo, don't add to history
       setIsUndoRedo(false);
       return;
     }
+    
+    // Skip if elements haven't actually changed
+    const elementsChanged = JSON.stringify(elements) !== JSON.stringify(prevElementsRef.current);
+    const selectedChanged = selectedElement?.id !== prevSelectedElementRef.current?.id;
+    
+    if (!elementsChanged && !selectedChanged) {
+      return;
+    }
+    
+    // Update refs
+    prevElementsRef.current = [...elements];
+    prevSelectedElementRef.current = selectedElement;
     
     // Create a new history state
     const newState: HistoryState = {
@@ -52,7 +79,7 @@ const DesignerRenderer: React.FC<DesignerRendererProps> = ({ template }) => {
     // Add the new state to history
     setHistory(prevHistory => [...prevHistory, newState]);
     setHistoryIndex(prevIndex => prevIndex + 1);
-  }, [elements]);
+  }, [elements, selectedElement, historyIndex, history.length, isUndoRedo]);
   
   // Undo function
   const handleUndo = useCallback(() => {
@@ -91,16 +118,6 @@ const DesignerRenderer: React.FC<DesignerRendererProps> = ({ template }) => {
       setHistoryIndex(historyIndex + 1);
     }
   }, [history, historyIndex]);
-  
-  // Initialize history with initial state
-  useEffect(() => {
-    const initialState: HistoryState = {
-      elements,
-      selectedElementId: null
-    };
-    setHistory([initialState]);
-    setHistoryIndex(0);
-  }, []);
   
   // Add keyboard shortcuts for undo/redo
   useEffect(() => {
@@ -173,17 +190,24 @@ const DesignerRenderer: React.FC<DesignerRendererProps> = ({ template }) => {
   };
 
   // Function to update element position and size
-  const handleUpdateElement = (updatedElement: Element) => {
-    const updatedElements = elements.map(el =>
-      el.id === updatedElement.id ? updatedElement : el
-    );
-    setElements(updatedElements);
 
-    // Update the selected element reference as well
-    if (selectedElement && selectedElement.id === updatedElement.id) {
-      setSelectedElement(updatedElement);
-    }
-  };
+const handleUpdateElement = (updatedElement: Element) => {
+  console.log(`Updating element ID: ${updatedElement.id}`, updatedElement);
+  
+  // Create a new elements array to ensure React detects the change
+  const updatedElements = elements.map(el =>
+    el.id === updatedElement.id ? {...updatedElement} : el
+  );
+  
+  console.log('Updated elements array:', updatedElements);
+  setElements(updatedElements);
+
+  // Update the selected element reference as well
+  if (selectedElement && selectedElement.id === updatedElement.id) {
+    setSelectedElement({...updatedElement});
+  }
+};
+
 
   // Function to handle context menu
   const handleElementContextMenu = (element: Element, x: number, y: number) => {
@@ -365,7 +389,7 @@ const DesignerRenderer: React.FC<DesignerRendererProps> = ({ template }) => {
         fontSize: 16,
         fontWeight: 'normal',
         color: '#000000',
-        backgroundColor: '#ffffff',
+        backgroundColor: 'rgba(0,0,0,0.0)',
         borderRadius: 0,
         padding: 0,
         textAlign: 'left',
@@ -376,7 +400,13 @@ const DesignerRenderer: React.FC<DesignerRendererProps> = ({ template }) => {
         borderColor: '#000000',
         boxShadowBlur: 0,
         boxShadowSpread: 0,
-        boxShadowColor: 'rgba(0,0,0,0.2)'
+        boxShadowColor: 'rgba(0,0,0,0.2)',
+      
+      },
+      // Add default animation config
+      animation: {
+        hover: 'none',
+        click: 'none'
       }
     };
     
@@ -387,12 +417,12 @@ const DesignerRenderer: React.FC<DesignerRendererProps> = ({ template }) => {
       case 'heading':
         newElement = {
           ...baseElement,
-          content: 'New Heading',
+          content: 'Heading Text',
           style: {
             ...baseElement.style,
             fontSize: 32,
             fontWeight: 'bold',
-            height: 50
+            height: 60
           }
         };
         break;
@@ -400,10 +430,10 @@ const DesignerRenderer: React.FC<DesignerRendererProps> = ({ template }) => {
       case 'paragraph':
         newElement = {
           ...baseElement,
-          content: 'New paragraph text. Click to edit.',
+          content: 'This is a paragraph of text. Click to edit.',
           style: {
             ...baseElement.style,
-            height: 80
+            height: 150
           }
         };
         break;
@@ -414,51 +444,53 @@ const DesignerRenderer: React.FC<DesignerRendererProps> = ({ template }) => {
           content: 'Button',
           style: {
             ...baseElement.style,
-            width: 120,
-            height: 40,
             backgroundColor: '#3498db',
             color: '#ffffff',
             borderRadius: 4,
+            padding: 10,
             textAlign: 'center',
-            padding: 8
-          }
+            height: 50
+          },
+          href: '#'
         };
         break;
         
       case 'image':
         newElement = {
           ...baseElement,
-          src: 'https://via.placeholder.com/200x100',
-          alt: 'Placeholder image',
           style: {
             ...baseElement.style,
-            objectFit: 'cover'
-          }
+            height: 200
+          },
+          src: 'https://via.placeholder.com/400x200',
+          alt: 'Placeholder image'
         };
         break;
         
       case 'video':
         newElement = {
           ...baseElement,
-          videoSrc: 'https://www.w3schools.com/html/mov_bbb.mp4',
-          controls: true,
           style: {
             ...baseElement.style,
-            objectFit: 'cover'
-          }
+            height: 200
+          },
+          videoSrc: 'https://www.w3schools.com/html/mov_bbb.mp4',
+          controls: true,
+          autoplay: false,
+          loop: false,
+          muted: true
         };
         break;
         
       case 'shape':
         newElement = {
           ...baseElement,
-          shapeType: 'rectangle', // Default shape type
           style: {
             ...baseElement.style,
-            backgroundColor: '#3498db',
-            width: 150,
-            height: 150
-          }
+            backgroundColor: '',
+            borderRadius: 0
+          },
+          shapeType: 'triangle' // Default shape type
         };
         break;
         
@@ -472,7 +504,6 @@ const DesignerRenderer: React.FC<DesignerRendererProps> = ({ template }) => {
     // Select the new element
     setSelectedElement(newElement);
   };
-
   return (
     <div className="designer-container" style={sectionStyle}>
       <div style={{ position: 'relative' }}>
@@ -488,61 +519,37 @@ const DesignerRenderer: React.FC<DesignerRendererProps> = ({ template }) => {
           <div>
             <h3 style={{ margin: 0 }}>Canvas Editor</h3>
           </div>
-          <div style={{ 
-            display: 'flex', 
-            gap: '10px', 
-            alignItems: 'center' 
-          }}>
-            {/* Undo/Redo buttons */}
-            {/* Undo button start*/}
+          <div style={{ fontSize: '14px', color: '#666', display: 'flex', gap: '10px' }}>
             <button
               onClick={handleUndo}
               disabled={historyIndex <= 0}
               style={{
                 padding: '5px 10px',
                 backgroundColor: historyIndex <= 0 ? '#e0e0e0' : '#3498db',
-                color: historyIndex <= 0 ? '#999' : 'white',
+                color: 'white',
                 border: 'none',
                 borderRadius: '4px',
                 cursor: historyIndex <= 0 ? 'not-allowed' : 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '5px'
+                opacity: historyIndex <= 0 ? 0.7 : 1
               }}
-              title="Undo (Ctrl+Z)"
             >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M3 10H16C18.7614 10 21 12.2386 21 15C21 17.7614 18.7614 20 16 20H12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                <path d="M7 6L3 10L7 14" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
               Undo
             </button>
-            {/* Undo button end*/}
-            {/* Redo button start*/}
             <button
               onClick={handleRedo}
               disabled={historyIndex >= history.length - 1}
               style={{
                 padding: '5px 10px',
                 backgroundColor: historyIndex >= history.length - 1 ? '#e0e0e0' : '#3498db',
-                color: historyIndex >= history.length - 1 ? '#999' : 'white',
+                color: 'white',
                 border: 'none',
                 borderRadius: '4px',
                 cursor: historyIndex >= history.length - 1 ? 'not-allowed' : 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '5px'
+                opacity: historyIndex >= history.length - 1 ? 0.7 : 1
               }}
-              title="Redo (Ctrl+Y or Ctrl+Shift+Z)"
             >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M21 10H8C5.23858 10 3 12.2386 3 15C3 17.7614 5.23858 20 8 20H12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                <path d="M17 6L21 10L17 14" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
               Redo
             </button>
-            {/* Redo button end*/}
-            {/* Copy button start*/}
             {clipboard && (
               <button
                 onClick={pasteElement}
@@ -552,27 +559,16 @@ const DesignerRenderer: React.FC<DesignerRendererProps> = ({ template }) => {
                   color: 'white',
                   border: 'none',
                   borderRadius: '4px',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '5px'
+                  cursor: 'pointer'
                 }}
-                title="Paste (Ctrl+V)"
               >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <rect x="5" y="3" width="14" height="18" rx="2" stroke="currentColor" strokeWidth="2"/>
-                  <path d="M9 7H15" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-                  <path d="M9 11H15" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-                  <path d="M9 15H13" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-                </svg>
-                Paste
+                Paste Element
               </button>
             )}
           </div>
-          {/* Copy button end*/}
         </div>
 
-        {/* Element Toolbar */}
+        {/* Element toolbar for adding new elements */}
         <ElementToolbar onAddElement={handleAddElement} />
 
         <CanvasRenderer 
@@ -611,21 +607,6 @@ const DesignerRenderer: React.FC<DesignerRendererProps> = ({ template }) => {
             onClose={() => setShowStyleEditor(false)}
           />
         )}
-      </div>
-      
-      {/* History status indicator */}
-      <div style={{
-        position: 'absolute',
-        bottom: '10px',
-        right: '10px',
-        backgroundColor: 'rgba(0,0,0,0.6)',
-        color: 'white',
-        padding: '5px 10px',
-        borderRadius: '4px',
-        fontSize: '12px',
-        pointerEvents: 'none'
-      }}>
-        History: {historyIndex + 1}/{history.length}
       </div>
     </div>
   );

@@ -68,7 +68,6 @@ const ElementToolbar: React.FC<ElementToolbarProps> = ({ onAddElement }) => {
       )
     }
   ];
-
   return (
     <div className="element-toolbar">
       {elementTypes.map((element) => (

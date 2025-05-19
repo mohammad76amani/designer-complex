@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { Element } from '../types/template';
 import { ElementRendererProps } from '../types/template';
 import ShapeElement from './elements/ShapeElement';
-
 const ElementRenderer: React.FC<ElementRendererProps> = ({ 
   element, 
   onSelect,
@@ -22,6 +22,10 @@ const ElementRenderer: React.FC<ElementRendererProps> = ({
   const [initialSize, setInitialSize] = useState({ width: 0, height: 0 });
   const [initialPosition, setInitialPosition] = useState({ x: 0, y: 0 });
   const [initialMousePosition, setInitialMousePosition] = useState({ x: 0, y: 0 });
+  
+  // State for hover and active (click) effects
+  const [isHovered, setIsHovered] = useState(false);
+  const [isActive, setIsActive] = useState(false);
   
   // Generate box shadow if shadow properties exist
   const generateBoxShadow = () => {
@@ -44,6 +48,20 @@ const ElementRenderer: React.FC<ElementRendererProps> = ({
     
     if (style.scale && style.scale !== 1) {
       transforms.push(`scale(${style.scale})`);
+    }
+    
+    // Apply hover scale effect if element has hover animation
+    if (isHovered && element.animation?.hover === 'scale-up') {
+      transforms.push('scale(1.05)');
+    }
+    
+    if (isHovered && element.animation?.hover === 'scale-down') {
+      transforms.push('scale(0.95)');
+    }
+    
+    // Apply click scale effect if element has click animation
+    if (isActive && element.animation?.click === 'scale-down') {
+      transforms.push('scale(0.9)');
     }
     
     return transforms.length ? transforms.join(' ') : 'none';
@@ -70,10 +88,51 @@ const ElementRenderer: React.FC<ElementRendererProps> = ({
   
   // Generate border style if border properties exist
   const generateBorder = () => {
+    // Apply hover border effect if element has hover animation
+    if (isHovered && element.animation?.hover === 'border') {
+      return `2px solid ${element.animation.hoverBorderColor || '#3498db'}`;
+    }
+    
     if (style.borderWidth && style.borderStyle && style.borderStyle !== 'none') {
       return `${style.borderWidth}px ${style.borderStyle} ${style.borderColor || '#000000'}`;
     }
+    
     return isSelected ? '2px solid #3498db' : 'none';
+  };
+  
+  // Get background color with hover/click effects
+  const getBackgroundColor = () => {
+    if (isActive && element.animation?.click === 'bg-color') {
+      return element.animation.clickBgColor || '#2980b9';
+    }
+    
+    if (isHovered && element.animation?.hover === 'bg-color') {
+      return element.animation.hoverBgColor || '#3498db';
+    }
+    
+    return style.backgroundColor;
+  };
+  
+  // Get text color with hover/click effects
+  const getTextColor = () => {
+    if (isActive && element.animation?.click === 'text-color') {
+      return element.animation.clickTextColor || '#ffffff';
+    }
+    
+    if (isHovered && element.animation?.hover === 'text-color') {
+      return element.animation.hoverTextColor || '#ffffff';
+    }
+    
+    return style.color;
+  };
+  
+  // Get box shadow with hover effect
+  const getBoxShadow = () => {
+    if (isHovered && element.animation?.hover === 'shadow') {
+      return '0 5px 15px rgba(0,0,0,0.2)';
+    }
+    
+    return generateBoxShadow();
   };
   
   const elementStyle: React.CSSProperties = {
@@ -84,19 +143,16 @@ const ElementRenderer: React.FC<ElementRendererProps> = ({
     height: typeof style.height === 'string' ? style.height : `${style.height}px`,
     fontSize: `${style.fontSize}px`,
     fontWeight: style.fontWeight,
-    color: style.color,
-    // Only apply backgroundColor if not a shape
-    backgroundColor: type === 'shape' ? 'transparent' : style.backgroundColor,
+    color: getTextColor(),
+    backgroundColor: getBackgroundColor(),
     borderRadius: `${style.borderRadius}px`,
     padding: `${style.padding}px`,
     textAlign: style.textAlign as 'left' | 'center' | 'right',
     zIndex: isDragging || isResizing ? 1000 : style.zIndex,
     boxSizing: 'border-box',
     cursor: isDragging ? 'grabbing' : 'grab',
-    // Only apply border if not a shape
-    border: type === 'shape' ? 'none' : generateBorder(),
-    // Only apply box shadow if not a shape (shapes handle their own shadows)
-    boxShadow: type === 'shape' ? 'none' : generateBoxShadow(),
+    border: generateBorder(),
+    boxShadow: getBoxShadow(),
     userSelect: 'none',
     touchAction: 'none',
     // Add new style properties
@@ -104,7 +160,9 @@ const ElementRenderer: React.FC<ElementRendererProps> = ({
     letterSpacing: style.letterSpacing !== undefined ? `${style.letterSpacing}px` : 'normal',
     lineHeight: style.lineHeight !== undefined ? style.lineHeight : 'normal',
     transform: generateTransform(),
-    filter: type === 'shape' ? 'none' : generateFilter(), // Shapes handle their own filters
+    filter: generateFilter(),
+    // Add transition for smooth animations
+    transition: 'all 0.2s ease',
   };
 
   // Handle mouse down for dragging
@@ -128,6 +186,16 @@ const ElementRenderer: React.FC<ElementRendererProps> = ({
         x: e.clientX - rect.left,
         y: e.clientY - rect.top
       });
+    }
+    
+    // Set active state for click animation
+    if (element.animation?.click) {
+      setIsActive(true);
+      
+      // Reset active state after a short delay (for animation)
+      setTimeout(() => {
+        setIsActive(false);
+      }, 300);
     }
   };
   
@@ -272,14 +340,22 @@ const ElementRenderer: React.FC<ElementRendererProps> = ({
     }
   };
   
+  // Handle click - separate from mousedown to handle double-click for style editor
   const handleClick = (e: React.MouseEvent) => {
-    // We don't want to prevent default or stop propagation here
-    // because we still want the element to be selected
-    
     // If the element is already selected and we have an onOpenStyleEditor handler,
     // call it to open the style editor
     if (isSelected && onOpenStyleEditor) {
       onOpenStyleEditor();
+    }
+    
+    // Apply click animation
+    if (element.animation?.click) {
+      setIsActive(true);
+      
+      // Reset active state after a short delay (for animation)
+      setTimeout(() => {
+        setIsActive(false);
+      }, 300);
     }
   };
   
@@ -293,6 +369,18 @@ const ElementRenderer: React.FC<ElementRendererProps> = ({
     onContextMenu(element, e.clientX, e.clientY);
   };
   
+  // Handle mouse enter for hover animation
+  const handleMouseEnter = () => {
+    if (element.animation?.hover) {
+      setIsHovered(true);
+    }
+  };
+  
+  // Handle mouse leave to reset hover state
+  const handleMouseLeave = () => {
+    setIsHovered(false);
+  };
+  
   // Add and remove event listeners
   useEffect(() => {
     if (isDragging || isResizing) {
@@ -304,7 +392,7 @@ const ElementRenderer: React.FC<ElementRendererProps> = ({
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('mouseup', handleMouseUp);
     };
-  }, [isDragging, isResizing, resizeHandle]);
+    }, [isDragging, isResizing, resizeHandle, initialSize, initialPosition, initialMousePosition]);
   
   // Render resize handles
   const renderResizeHandles = () => {
@@ -333,7 +421,7 @@ const ElementRenderer: React.FC<ElementRendererProps> = ({
           left: handle.left,
           right: handle.right,
           bottom: handle.bottom,
-                    transform: handle.transform,
+          transform: handle.transform,
           backgroundColor: '#3498db',
           borderRadius: '50%',
           cursor: handle.cursor,
@@ -345,7 +433,7 @@ const ElementRenderer: React.FC<ElementRendererProps> = ({
   };
   
   // Render different element types
-const renderContent = () => {
+  const renderContent = () => {
   switch (type) {
     case 'button':
       return (
@@ -401,27 +489,29 @@ const renderContent = () => {
         </h2>
       );
       
-    case 'shape':
-      return <ShapeElement element={element} />;
-      
     case 'video':
       return (
-        <video 
-          src={element.videoSrc} 
-          controls={element.controls}
+        <video
+          src={element.videoSrc}
           autoPlay={element.autoplay}
           loop={element.loop}
           muted={element.muted}
+          controls={element.controls}
           style={{
-            width: '100%', 
-            height: '100%', 
+            width: '100%',
+            height: '100%',
             objectFit: style.objectFit as 'cover' | 'contain' | 'fill' | 'none' || 'cover',
             borderRadius: `${style.borderRadius}px`,
             pointerEvents: 'none',
-          }} 
+          }}
         />
       );
       
+  case 'shape':
+      console.log(`ElementRenderer rendering shape with type: ${element.shapeType} for element ID: ${element.id}`);
+      // Force a key change when shapeType changes to ensure re-rendering
+      return <ShapeElement key={`${element.id}-${element.shapeType}-${Date.now()}`} element={element} />;
+    
     default:
       return <div style={{pointerEvents: 'none'}}>Unknown element type: {type}</div>;
   }
@@ -434,6 +524,8 @@ const renderContent = () => {
       onMouseDown={handleMouseDown}
       onClick={handleClick}
       onContextMenu={handleContextMenu}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
       data-element-id={id}
       data-element-type={type}
       className={`element-wrapper ${isDragging ? 'dragging' : ''} ${isResizing ? 'resizing' : ''}`}

@@ -84,13 +84,44 @@ export interface BlockSettings {
 }
 
 //=============================================================================
+// ANIMATION TYPES
+//=============================================================================
+
+/**
+ * Animation configuration for elements
+ */
+export interface AnimationConfig {
+  // State animations (hover, etc.)
+  states?: {
+    hover?: Partial<ElementStyle>;
+    active?: Partial<ElementStyle>;
+  };
+  
+  // Entrance animations
+  entrance?: {
+    type: 'fade' | 'slide' | 'zoom' | 'bounce' | 'flip' | 'none';
+    direction?: 'up' | 'down' | 'left' | 'right';
+    duration: number; // in milliseconds
+    delay: number; // in milliseconds
+    easing: string; // CSS easing function
+  };
+  
+  // Continuous animations
+  continuous?: {
+    type: 'pulse' | 'bounce' | 'shake' | 'spin' | 'float' | 'none';
+    duration: number;
+    iterationCount: number | 'infinite';
+    easing: string;
+  };
+}
+
+//=============================================================================
 // ELEMENT TYPES
 //=============================================================================
 
 /**
  * Element that can be placed on the canvas (button, image, text, etc.)
  */
-
 export interface Element {
   id: string;
   type: string;
@@ -106,6 +137,20 @@ export interface Element {
   autoplay?: boolean;
   loop?: boolean;
   muted?: boolean;
+  animation?: {
+    hover?: string;
+    hoverBgColor?: string;
+    hoverTextColor?: string;
+    hoverBorderColor?: string;
+    click?: string;
+    clickBgColor?: string;
+    clickTextColor?: string;
+    entrance?: {
+      type: string;
+      duration?: number;
+      delay?: number;
+    };
+  };
 }
 
 
@@ -155,6 +200,31 @@ export interface ElementStyle {
   
   // Image-specific properties
   objectFit?: 'cover' | 'contain' | 'fill' | 'none';
+  
+  // Animation properties
+  transition?: string;
+}
+/**
+ * Animation configuration for elements
+ */
+export interface ElementAnimation {
+  entrance?: {
+    type: 'none' | 'fade' | 'slide' | 'zoom' | 'bounce' | 'flip';
+    direction?: 'up' | 'down' | 'left' | 'right' | 'in' | 'out';
+    duration?: number;
+    delay?: number;
+    easing?: string;
+  };
+  continuous?: {
+    type: 'none' | 'pulse' | 'bounce' | 'shake' | 'spin' | 'float';
+    duration?: number;
+    iterationCount?: string | number;
+    easing?: string;
+  };
+  states?: {
+    hover?: Record<string, any>;
+    active?: Record<string, any>;
+  };
 }
 
 //=============================================================================
@@ -219,6 +289,7 @@ export interface ElementRendererProps {
   canvasRef: React.RefObject<HTMLDivElement>;
   onContextMenu: (element: Element, x: number, y: number) => void;
   onOpenStyleEditor?: () => void;
+  isPreviewMode?: boolean;
 }
 
 /**
@@ -233,4 +304,11 @@ export interface ContextMenuProps {
   onCut: () => void;
   onPaste?: () => void;
   canPaste: boolean;
+}
+
+/**
+ * Props for AnimationPreview component
+ */
+export interface AnimationPreviewProps {
+  element: Element;
 }
