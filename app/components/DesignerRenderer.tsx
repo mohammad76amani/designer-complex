@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Template, Element } from '@/app/types/template';
+import {  Element } from '@/app/types/template';
 import CanvasRenderer from './CanvasRenderer';
 import ContextMenu from './ContextMenu';
 import FloatingStyleEditor from './FloatingStyleEditor';
