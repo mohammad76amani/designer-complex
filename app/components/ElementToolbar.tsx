@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { Element } from '../types/template';
 
 interface ElementToolbarProps {
   onAddElement: (elementType: string) => void;

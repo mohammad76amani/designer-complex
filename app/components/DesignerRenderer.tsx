@@ -5,7 +5,6 @@ import ContextMenu from './ContextMenu';
 import FloatingStyleEditor from './FloatingStyleEditor';
 import ElementToolbar from './ElementToolbar';
 import { DesignerRendererProps } from '@/app/types/template';
-import { getDefaultAnimationConfig } from '../utils/animationUtils';
 
 // Define a history state type
 interface HistoryState {
@@ -25,7 +24,18 @@ const DesignerRenderer: React.FC<DesignerRendererProps> = ({ template }) => {
     designerSection?.blocks?.elements || []
   );
   const [clipboard, setClipboard] = useState<Element | null>(null);
-  
+    // Context menu state
+  const [contextMenu, setContextMenu] = useState<{
+    show: boolean;
+    x: number;
+    y: number;
+    element: Element | null;
+  }>({
+    show: false,
+    x: 0,
+    y: 0,
+    element: null
+  });
   // History management
   const [history, setHistory] = useState<HistoryState[]>([]);
   const [historyIndex, setHistoryIndex] = useState<number>(-1);
@@ -123,6 +133,7 @@ const DesignerRenderer: React.FC<DesignerRendererProps> = ({ template }) => {
     }
   }, [history, historyIndex]);
   
+  
   const ungroup = (groupElement: Element) => {
     if (groupElement.type !== 'group' || !groupElement.childIds) {
       console.log("Not a group or no child elements");
@@ -194,18 +205,7 @@ const DesignerRenderer: React.FC<DesignerRendererProps> = ({ template }) => {
     setShowStyleEditor(true);
   };
 
-  // Context menu state
-  const [contextMenu, setContextMenu] = useState<{
-    show: boolean;
-    x: number;
-    y: number;
-    element: Element | null;
-  }>({
-    show: false,
-    x: 0,
-    y: 0,
-    element: null
-  });
+
 
   if (!designerSection) {
     return <div>No designer section found in template</div>;
@@ -388,6 +388,7 @@ const handleSelectElement = (element: Element | null, isMultiSelect: boolean = f
     }
   };
   
+  // Function to handle the "Group" 
   const createGroup = () => {
     // Only create a group if multiple elements are selected
     if (selectedElementIds.length <= 1) {
@@ -399,7 +400,7 @@ const handleSelectElement = (element: Element | null, isMultiSelect: boolean = f
     
     // Get the selected elements
     const selectedElements = elements.filter(el => selectedElementIds.includes(el.id));
-    
+  
     // Calculate the bounding box of all selected elements
     let minX = Infinity, minY = Infinity;
     let maxX = -Infinity, maxY = -Infinity;
