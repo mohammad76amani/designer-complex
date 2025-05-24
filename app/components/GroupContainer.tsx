@@ -89,10 +89,6 @@ const GroupContainer: React.FC<GroupContainerProps> = ({
       const finalX = rect.left - canvasRect.left;
       const finalY = rect.top - canvasRect.top;
       
-      // Calculate the position change
-      const deltaX = finalX - group.style.x;
-      const deltaY = finalY - group.style.y;
-      
       // Update the group with the new position
       const updatedGroup = {
         ...group,
@@ -206,9 +202,9 @@ const GroupContainer: React.FC<GroupContainerProps> = ({
               // Don't modify x and y as they're already relative to the group
             }
           }} 
-          onSelect={(e) => {
-            e.stopPropagation(); // Prevent selecting the group
-            onSelectGroupElement(element, e.shiftKey || e.ctrlKey || e.metaKey);
+          onSelect={(isMultiSelect?: boolean) => {
+            // Event propagation is handled internally by ElementRenderer
+            onSelectGroupElement(element, !!isMultiSelect);
           }}
           isSelected={selectedElementIds.includes(element.id)}
           onUpdateElement={(updatedElement) => {

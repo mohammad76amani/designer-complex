@@ -31,7 +31,7 @@ export const getAnimationClasses = (element: Element): string => {
     classes.push(`hover-${element.animation.hover}`);
   }
   
-  if (element.animation.click && element.animation.click !== 'none') {
+  if (element.animation.click) {
     classes.push(`click-${element.animation.click}`);
   }
   

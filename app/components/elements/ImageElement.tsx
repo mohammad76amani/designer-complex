@@ -1,6 +1,6 @@
 import React from 'react';
 import { Element } from '../../types/template';
-
+import Image from 'next/image';
 interface ImageElementProps {
   element: Element;
 }
@@ -10,7 +10,9 @@ const ImageElement: React.FC<ImageElementProps> = ({ element }) => {
   
   return (
     <img 
-      src={src} 
+      src={src||''}
+      width={1000} 
+      height={1000}
       alt={alt || 'Image'} 
       style={{
         width: '100%', 

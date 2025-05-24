@@ -52,13 +52,21 @@ export interface Template {
  */
 export interface Section {
   type: string;
-  setting?: any;
-  settings?: any;
+  setting?: DirectionSetting;
+  settings?: BlockSettings;
   blocks?: Blocks;
   sections?: Section[];
   order?: string[];
 }
-
+export interface DirectionSetting {
+  paddingTop?: string;
+  paddingBottom?: string;
+  paddingLeft?: string;
+  paddingRight?: string;
+  marginTop?: string;
+  marginBottom?: string;
+  backgroundColor: string;
+}
 //=============================================================================
 // CANVAS AND BLOCKS TYPES
 //=============================================================================
@@ -78,14 +86,38 @@ export interface Blocks {
 export interface BlockSettings {
   canvasWidth: string;
   canvasHeight: string;
-  backgroundColor: string;
   gridSize: number;
   showGrid: boolean;
+  paddingTop?: number;
+  paddingBottom?: number;
+  paddingLeft?: number;
+  paddingRight?: number;
+  marginTop?: number;
+  marginBottom?: number;
+  backgroundColor?: string;
 }
 
 //=============================================================================
 // ANIMATION TYPES
 //=============================================================================
+
+/**
+ * Simple animation configuration for hover and click states
+ */
+interface SimpleAnimation {
+    hover?: 'none' | 'shadow' | 'scale-up' | 'scale-down' | 'border' | 'bg-color' | 'text-color';
+    click: 'none' | 'bg-color' | 'text-color' | 'scale-down' | 'bounce' | 'pulse';
+  entrance?: {
+    type: string;
+    duration?: number;
+    delay?: number;
+  };
+  hoverBorderColor?: string;
+  hoverBgColor?: string;
+  hoverTextColor?: string;
+  clickBgColor?: string;
+  clickTextColor?: string;
+}
 
 /**
  * Animation configuration for elements
@@ -140,8 +172,10 @@ export interface Element {
   // Group-related properties
   childIds?: string[];
   parentId?: string;
+  locked?: boolean;
+  // Simple animation properties for the AnimationEditor
+  animation?: SimpleAnimation;
 }
-
 
 /**
  * Style properties for elements
@@ -193,6 +227,7 @@ export interface ElementStyle {
   // Animation properties
   transition?: string;
 }
+
 /**
  * Animation configuration for elements
  */
@@ -211,8 +246,8 @@ export interface ElementAnimation {
     easing?: string;
   };
   states?: {
-    hover?: Record<string, any>;
-    active?: Record<string, any>;
+    hover?: Record<string, unknown>;
+    active?: Record<string, unknown>;
   };
 }
 
@@ -227,7 +262,15 @@ export interface SectionRendererProps {
   sectionKey: string;
   section: Section;
 }
-
+export interface AnimationConfig {
+  click?: string;
+  hover?: string;
+  hoverBgColor?: string;
+  hoverTextColor?: string;
+  hoverBorderColor?: string;
+  clickBgColor?: string;
+  clickTextColor?: string;
+}
 /**
  * Props for FloatingStyleEditor component
  */
@@ -235,6 +278,7 @@ export interface FloatingStyleEditorProps {
   element: Element;
   onUpdateElement: (updatedElement: Element) => void;
   onClose: () => void;
+  canvasRef: React.RefObject<HTMLDivElement>;
 }
 
 /**
@@ -274,7 +318,7 @@ export interface ElementEditorProps {
  */
 export interface ElementRendererProps {
   element: Element;
-  onSelect: () => void;
+  onSelect: (isMultiSelect?: boolean) => void;
   isSelected: boolean;
   onUpdateElement: (updatedElement: Element) => void;
   canvasRef: React.RefObject<HTMLDivElement>;
@@ -303,4 +347,12 @@ export interface ContextMenuProps {
  */
 export interface AnimationPreviewProps {
   element: Element;
+}
+
+/**
+ * Props for AnimationEditor component
+ */
+export interface AnimationEditorProps {
+  element: Element;
+  onUpdateElement: (updatedElement: Element) => void;
 }

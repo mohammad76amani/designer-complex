@@ -6,6 +6,8 @@ import HeadingElement from './elements/HeadingElement';
 import ImageElement from './elements/ImageElement';
 import ParagraphElement from './elements/ParagraphElement';
 import VideoElement from './elements/VideoElement';
+import ElementStyleService from '../services/elementStyleService';
+import CanvasCalculationService from '../services/canvasCalculationService';
 
 const ElementRenderer: React.FC<ElementRendererProps> = ({
   element,
@@ -17,277 +19,192 @@ const ElementRenderer: React.FC<ElementRendererProps> = ({
   onOpenStyleEditor,
   isInGroup
 }) => {
-  const { id, type, content, style, src, alt, href, target } = element;
+  const { id, type,href, target } = element;
   const elementRef = useRef<HTMLDivElement>(null);
-  const [isDragging, setIsDragging] = useState(false);
-  const [isResizing, setIsResizing] = useState(false);
+  const [isDragging, setIsDragging] = useState<boolean>(false);
+  const [isResizing, setIsResizing] = useState<boolean>(false);
   const [resizeHandle, setResizeHandle] = useState<string | null>(null);
-  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
-  const [initialSize, setInitialSize] = useState({ width: 0, height: 0 });
-  const [initialPosition, setInitialPosition] = useState({ x: 0, y: 0 });
-  const [initialMousePosition, setInitialMousePosition] = useState({ x: 0, y: 0 });
-  const [isHovered, setIsHovered] = useState(false);
-  const [isActive, setIsActive] = useState(false);
+  const [dragOffset, setDragOffset] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+  const [initialSize, setInitialSize] = useState<{ x: number; y: number; width: number; height: number }>({ x: 0, y: 0, width: 0, height: 0 });
+  const [initialMousePosition, setInitialMousePosition] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+  const [isHovered, setIsHovered] = useState<boolean>(false);
+  const [isActive, setIsActive] = useState<boolean>(false);
 
-  // Generate dynamic styles
-  const generateBoxShadow = () => {
-    if (isHovered && element.animation?.hover === 'shadow') {
-      return '0 5px 15px rgba(0,0,0,0.2)';
-    }
-    if (style.boxShadowBlur || style.boxShadowSpread) {
-      const blur = style.boxShadowBlur || 0;
-      const spread = style.boxShadowSpread || 0;
-      const color = style.boxShadowColor || 'rgba(0,0,0,0.2)';
-      return `0 0 ${blur}px ${spread}px ${color}`;
-    }
-    return isSelected ? '0 0 10px rgba(52, 152, 219, 0.5)' : 'none';
-  };
+  // Generate element style using the service
+  const elementStyle = ElementStyleService.generateElementStyle(element, {
+    isSelected,
+    isHovered,
+    isActive,
+    isDragging,
+    isResizing,
+    isInGroup
+  });
 
-  const generateTransform = () => {
-    const transforms = [];
-    if (style.rotate) transforms.push(`rotate(${style.rotate}deg)`);
-    if (style.scale && style.scale !== 1) transforms.push(`scale(${style.scale})`);
-    if (isHovered) {
-      if (element.animation?.hover === 'scale-up') transforms.push('scale(1.05)');
-      if (element.animation?.hover === 'scale-down') transforms.push('scale(0.95)');
-    }
-    if (isActive && element.animation?.click === 'scale-down') {
-      transforms.push('scale(0.9)');
-    }
-    return transforms.length ? transforms.join(' ') : 'none';
-  };
-
-  const generateFilter = () => {
-    const filters = [];
-    if (style.blur) filters.push(`blur(${style.blur}px)`);
-    if (style.brightness && style.brightness !== 100) filters.push(`brightness(${style.brightness}%)`);
-    if (style.contrast && style.contrast !== 100) filters.push(`contrast(${style.contrast}%)`);
-    return filters.join(' ') || 'none';
-  };
-
-  const generateBorder = () => {
-    if (isHovered && element.animation?.hover === 'border') {
-      return `2px solid ${element.animation.hoverBorderColor || '#3498db'}`;
-    }
-    if (style.borderWidth && style.borderStyle !== 'none') {
-      return `${style.borderWidth}px ${style.borderStyle} ${style.borderColor || '#000000'}`;
-    }
-    return isSelected ? '2px solid #3498db' : 'none';
-  };
-
-  const getBackgroundColor = () => {
-    if (isActive && element.animation?.click === 'bg-color') {
-      return element.animation.clickBgColor || '#2980b9';
-    }
-    if (isHovered && element.animation?.hover === 'bg-color') {
-      return element.animation.hoverBgColor || '#3498db';
-    }
-    return style.backgroundColor;
-  };
-
-  const getTextColor = () => {
-    if (isActive && element.animation?.click === 'text-color') {
-      return element.animation.clickTextColor || '#ffffff';
-    }
-    if (isHovered && element.animation?.hover === 'text-color') {
-      return element.animation.hoverTextColor || '#ffffff';
-    }
-    return style.color;
-  };
-
-  // Generate animation classes
-  const getAnimationClasses = () => {
-    if (!element.animation) return '';
-    
-    const classes = [];
-    
-    if (element.animation.entrance && element.animation.entrance.type !== 'none') {
-      classes.push(`entrance-${element.animation.entrance.type}`);
-    }
-    
-    if (isActive) {
-      if (element.animation.click === 'bounce') classes.push('animate-bounce');
-      if (element.animation.click === 'pulse') classes.push('animate-pulse');
-    }
-    
-    return classes.join(' ');
-  };
-
-  const elementStyle: React.CSSProperties = {
-    position: 'absolute',
-    left: `${style.x}px`,
-    top: `${style.y}px`,
-    width: typeof style.width === 'string' ? style.width : `${style.width}px`,
-    height: typeof style.height === 'string' ? style.height : `${style.height}px`,
-    fontSize: `${style.fontSize}px`,
-    fontWeight: style.fontWeight,
-    color: getTextColor(),
-    backgroundColor: type === 'shape' ? 'transparent' : getBackgroundColor(),
-    borderRadius: `${style.borderRadius}px`,
-    padding: `${style.padding}px`,
-    textAlign: style.textAlign as 'left' | 'center' | 'right',
-    zIndex: isDragging || isResizing ? 1000 : style.zIndex,
-    boxSizing: 'border-box',
-    cursor: isDragging ? 'grabbing' : (isInGroup ? 'pointer' : 'grab'),
-    border: type === 'shape' ? 'none' : generateBorder(),
-    boxShadow: type === 'shape' ? 'none' : generateBoxShadow(),
-    userSelect: 'none',
-    touchAction: 'none',
-    opacity: style.opacity ?? 1,
-    letterSpacing: style.letterSpacing !== undefined ? `${style.letterSpacing}px` : 'normal',
-    lineHeight: style.lineHeight ?? 'normal',
-    transform: generateTransform(),
-    filter: type === 'shape' ? 'none' : generateFilter(),
-    transition: 'all 0.2s ease',
-    animationDuration: element.animation?.entrance?.duration ? `${element.animation.entrance.duration}ms` : '1000ms',
-    animationDelay: element.animation?.entrance?.delay ? `${element.animation.entrance.delay}ms` : '0ms',
-    animationFillMode: 'both'
+  // Generate animation classes using the service
+  const getAnimationClasses = (): string => {
+    return ElementStyleService.getAnimationClasses(element, isActive);
   };
 
   // Event handlers for drag, resize, click, hover...
-  const handleMouseDown = (e: React.MouseEvent) => {
-    // Only respond to left mouse button (button 0)
-    if (e.button !== 0) return;
-    
-    // Prevent dragging if in a group
-    if (isInGroup) {
-      e.stopPropagation();
-      
-      // Select the element, passing the multi-select flag if shift/ctrl is pressed
-      const isMultiSelect = e.shiftKey || e.ctrlKey || e.metaKey;
-      onSelect(isMultiSelect);
-      
-      if (element.animation?.click) {
-        setIsActive(true);
-        setTimeout(() => setIsActive(false), 300);
-      }
-      return;
-    }
-    
-    e.preventDefault();
+  const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
+  if (e.button !== 0) return;
+  
+  if (isInGroup) {
     e.stopPropagation();
-    
-    // Select the element, passing the multi-select flag if shift/ctrl is pressed
     const isMultiSelect = e.shiftKey || e.ctrlKey || e.metaKey;
     onSelect(isMultiSelect);
+    return;
+  }
+  
+  e.preventDefault();
+  e.stopPropagation();
+  
+  const isMultiSelect = e.shiftKey || e.ctrlKey || e.metaKey;
+  onSelect(isMultiSelect);
+  
+  setIsDragging(true);
+  
+  // Use service for coordinate conversion
+  if (elementRef.current && canvasRef.current) {
+    const canvasCoords = CanvasCalculationService.screenToCanvas(
+      e.clientX, 
+      e.clientY, 
+      canvasRef.current
+    );
     
-    setIsDragging(true);
-    
-    // Calculate the offset from the mouse position to the element's top-left corner
-    if (elementRef.current) {
-      const rect = elementRef.current.getBoundingClientRect();
-      setDragOffset({
-        x: e.clientX - rect.left,
-        y: e.clientY - rect.top
-      });
-    }
-    
-    if (element.animation?.click) {
-      setIsActive(true);
-      setTimeout(() => setIsActive(false), 300);
-    }
-  };
+    const elementBounds = CanvasCalculationService.getElementBounds(element);
+    setDragOffset({
+      x: canvasCoords.x - elementBounds.x,
+      y: canvasCoords.y - elementBounds.y
+    });
+  }
+};
 
   // Handle mouse move for dragging
   const handleMouseMove = (e: MouseEvent) => {
-    if (!canvasRef.current || isInGroup) return;
-    const canvasRect = canvasRef.current.getBoundingClientRect();
+  if (!canvasRef.current || isInGroup) return;
 
-    if (isDragging) {
-      const newX = e.clientX - canvasRect.left - dragOffset.x;
-      const newY = e.clientY - canvasRect.top - dragOffset.y;
-
-      if (elementRef.current) {
-        elementRef.current.style.left = `${newX}px`;
-        elementRef.current.style.top = `${newY}px`;
-      }
-    } else if (isResizing && resizeHandle) {
-      const mouseX = e.clientX - canvasRect.left;
-      const mouseY = e.clientY - canvasRect.top;
-      const deltaX = mouseX - initialMousePosition.x;
-      const deltaY = mouseY - initialMousePosition.y;
-
-      let newWidth = initialSize.width;
-      let newHeight = initialSize.height;
-      let newX = initialPosition.x;
-      let newY = initialPosition.y;
-
-      switch (resizeHandle) {
-        case 'e':
-          newWidth = Math.max(20, initialSize.width + deltaX);
-          break;
-        case 'w':
-          newWidth = Math.max(20, initialSize.width - deltaX);
-          newX = initialPosition.x + deltaX;
-          break;
-        case 's':
-          newHeight = Math.max(20, initialSize.height + deltaY);
-          break;
-        case 'n':
-          newHeight = Math.max(20, initialSize.height - deltaY);
-          newY = initialPosition.y + deltaY;
-          break;
-        case 'se':
-          newWidth = Math.max(20, initialSize.width + deltaX);
-          newHeight = Math.max(20, initialSize.height + deltaY);
-          break;
-        case 'sw':
-          newWidth = Math.max(20, initialSize.width - deltaX);
-          newHeight = Math.max(20, initialSize.height + deltaY);
-          newX = initialPosition.x + deltaX;
-          break;
-        case 'ne':
-          newWidth = Math.max(20, initialSize.width + deltaX);
-          newHeight = Math.max(20, initialSize.height - deltaY);
-          newY = initialPosition.y + deltaY;
-          break;
-        case 'nw':
-          newWidth = Math.max(20, initialSize.width - deltaX);
-          newHeight = Math.max(20, initialSize.height - deltaY);
-          newX = initialPosition.x + deltaX;
-          newY = initialPosition.y + deltaY;
-          break;
-      }
-
-      if (elementRef.current) {
-        elementRef.current.style.width = `${newWidth}px`;
-        elementRef.current.style.height = `${newHeight}px`;
-        elementRef.current.style.left = `${newX}px`;
-        elementRef.current.style.top = `${newY}px`;
-      }
+  if (isDragging) {
+    const canvasCoords = CanvasCalculationService.screenToCanvas(
+      e.clientX, 
+      e.clientY, 
+      canvasRef.current
+    );
+    
+    let newX = canvasCoords.x - dragOffset.x;
+    let newY = canvasCoords.y - dragOffset.y;
+    
+    // Apply grid snapping if enabled
+    const gridSize = 10; // Get from canvas settings
+    const snappedPosition = CanvasCalculationService.snapToGrid(
+      { x: newX, y: newY }, 
+      gridSize
+    );
+    
+    // Apply smart guides snapping
+    const tempElement = {
+      ...element,
+      style: { ...element.style, x: snappedPosition.x, y: snappedPosition.y }
+    };
+    
+    // Get other elements for snapping (you'll need to pass this from parent)
+    const otherElements: Array<ElementRendererProps['element']> = [];
+    const snapGuides = CanvasCalculationService.calculateSnapGuides(
+      tempElement,
+      otherElements,
+      5 // snap threshold
+    );
+    
+    if (snapGuides.snappedPosition) {
+      newX = snapGuides.snappedPosition.x;
+      newY = snapGuides.snappedPosition.y;
     }
-  };
+    
+    if (elementRef.current) {
+      elementRef.current.style.left = `${newX}px`;
+      elementRef.current.style.top = `${newY}px`;
+    }
+  } else if (isResizing && resizeHandle) {
+    const canvasCoords = CanvasCalculationService.screenToCanvas(
+      e.clientX, 
+      e.clientY, 
+      canvasRef.current
+    );
+    
+    // Use service for resize calculations
+    const newBounds = CanvasCalculationService.calculateResizeConstraints(
+      element,
+      resizeHandle,
+      canvasCoords,
+      initialSize,
+      initialMousePosition,
+      { width: 20, height: 20 }, // min size
+      element.type === 'image' ? 16/9 : undefined // aspect ratio for images
+    );
+    
+    // Constrain to canvas
+    const canvasRect = canvasRef.current.getBoundingClientRect();
+    const constrainedBounds = CanvasCalculationService.constrainToCanvas(
+      newBounds,
+      { width: canvasRect.width, height: canvasRect.height }
+    );
+    
+    if (elementRef.current) {
+      elementRef.current.style.width = `${constrainedBounds.width}px`;
+      elementRef.current.style.height = `${constrainedBounds.height}px`;
+      elementRef.current.style.left = `${constrainedBounds.x}px`;
+      elementRef.current.style.top = `${constrainedBounds.y}px`;
+    }
+  }
+};
+
 
   // Handle mouse up to end dragging or resizing
-  const handleMouseUp = () => {
-    if ((!isDragging && !isResizing) || isInGroup) return;
+const handleMouseUp = () => {
+  if ((!isDragging && !isResizing) || isInGroup) return;
 
-    if (elementRef.current && canvasRef.current) {
-      const rect = elementRef.current.getBoundingClientRect();
-      const canvasRect = canvasRef.current.getBoundingClientRect();
+  if (elementRef.current && canvasRef.current) {
+    const rect = elementRef.current.getBoundingClientRect();
+    const canvasRect = canvasRef.current.getBoundingClientRect();
+    
+    // Convert screen coordinates to canvas coordinates
+    const canvasCoords = CanvasCalculationService.screenToCanvas(
+      rect.left,
+      rect.top,
+      canvasRef.current
+    );
+    
+    // Constrain final position to canvas
+    const constrainedBounds = CanvasCalculationService.constrainToCanvas(
+      {
+        x: canvasCoords.x,
+        y: canvasCoords.y,
+        width: rect.width,
+        height: rect.height
+      },
+      { width: canvasRect.width, height: canvasRect.height }
+    );
 
-      const finalX = rect.left - canvasRect.left;
-      const finalY = rect.top - canvasRect.top;
+    onUpdateElement({
+      ...element,
+      style: {
+        ...element.style,
+        x: constrainedBounds.x,
+        y: constrainedBounds.y,
+        width: constrainedBounds.width,
+        height: constrainedBounds.height
+      }
+    });
+  }
 
-      onUpdateElement({
-        ...element,
-        style: {
-          ...element.style,
-          x: Math.max(0, finalX),
-          y: Math.max(0, finalY),
-          width: rect.width,
-          height: rect.height
-        }
-      });
-    }
+  setIsDragging(false);
+  setIsResizing(false);
+  setResizeHandle(null);
+};
 
-    setIsDragging(false);
-    setIsResizing(false);
-    setResizeHandle(null);
-  };
 
   // Handle resize start
-  const handleResizeStart = (e: React.MouseEvent, handle: string) => {
+  const handleResizeStart = (e: React.MouseEvent<HTMLDivElement>, handle: string) => {
     if (e.button !== 0 || isInGroup) return;
     e.preventDefault();
     e.stopPropagation();
@@ -299,14 +216,13 @@ const ElementRenderer: React.FC<ElementRendererProps> = ({
       const rect = elementRef.current.getBoundingClientRect();
       const canvasRect = canvasRef.current.getBoundingClientRect();
 
+      const x = rect.left - canvasRect.left;
+      const y = rect.top - canvasRect.top;
       setInitialSize({
+        x,
+        y,
         width: rect.width,
         height: rect.height
-      });
-
-      setInitialPosition({
-        x: rect.left - canvasRect.left,
-        y: rect.top - canvasRect.top
       });
 
       setInitialMousePosition({
@@ -316,7 +232,7 @@ const ElementRenderer: React.FC<ElementRendererProps> = ({
     }
   };
 
-  const handleClick = (e: React.MouseEvent) => {
+  const handleClick = (e: React.MouseEvent<HTMLDivElement>) => {
     if (isSelected && onOpenStyleEditor) {
       onOpenStyleEditor();
     }
@@ -327,7 +243,7 @@ const ElementRenderer: React.FC<ElementRendererProps> = ({
     }
   };
 
-  const handleContextMenu = (e: React.MouseEvent) => {
+  const handleContextMenu = (e: React.MouseEvent<HTMLDivElement>) => {
     e.preventDefault();
     e.stopPropagation();
     onContextMenu(element, e.clientX, e.clientY);
@@ -350,7 +266,7 @@ const ElementRenderer: React.FC<ElementRendererProps> = ({
     };
   }, [isDragging, isResizing, resizeHandle]);
 
-  const renderResizeHandles = () => {
+   const renderResizeHandles = () => {
     if (!isSelected || isInGroup) return null;
     
     const handles = [
@@ -369,40 +285,45 @@ const ElementRenderer: React.FC<ElementRendererProps> = ({
         key={h.position}
         className="resize-handle"
         style={{
-          ...h,
           position: 'absolute',
+          top: h.top,
+          left: h.left,
+          right: h.right,
+          bottom: h.bottom,
           width: '10px',
           height: '10px',
           backgroundColor: '#3498db',
           borderRadius: '50%',
           cursor: h.cursor,
-          zIndex: 1001
+          zIndex: 1001,
+          transform: h.left === '50%' ? 'translateX(-50%)' : h.top === '50%' ? 'translateY(-50%)' : undefined
         }}
         onMouseDown={(e) => handleResizeStart(e, h.position)}
       />
     ));
   };
-const renderContent = () => {
-switch (type) {
-case 'button':
-return <ButtonElement element={element} />;
-case 'image':
-return <ImageElement element={element} />;
-case 'paragraph':
-return <ParagraphElement element={element} />;
-case 'heading':
-return <HeadingElement element={element} />;
-case 'video':
-return <VideoElement element={element} />;
-case 'shape':
-return <ShapeElement element={element} />;
-default:
-return <div style={{pointerEvents: 'none'}}>Unknown element type: {type}</div>;
-}
-};
+
+  const renderContent = (): React.ReactNode => {
+    switch (type) {
+      case 'button':
+        return <ButtonElement element={element} />;
+      case 'image':
+        return <ImageElement element={element} />;
+      case 'paragraph':
+        return <ParagraphElement element={element} />;
+      case 'heading':
+        return <HeadingElement element={element} />;
+      case 'video':
+        return <VideoElement element={element} />;
+      case 'shape':
+        return <ShapeElement element={element} />;
+      default:
+        return <div style={{pointerEvents: 'none'}}>Unknown element type: {type}</div>;
+    }
+  };
 
   // For link elements, wrap content in an anchor tag
-  const wrapWithLink = (content: React.ReactNode) => {
+  const wrapWithLink = (content: React.ReactNode): React.ReactNode => {
     if (href) {
       return (
         <a 
@@ -417,13 +338,33 @@ return <div style={{pointerEvents: 'none'}}>Unknown element type: {type}</div>;
             height: '100%',
             pointerEvents: 'auto'
           }}
-          onClick={(e) => e.stopPropagation()}
+          onClick={(e: React.MouseEvent<HTMLAnchorElement>) => e.stopPropagation()}
         >
           {content}
         </a>
       );
     }
     return content;
+  };
+
+  // Add collision detection during drag
+  const checkCollisions = (newPosition: { x: number; y: number }) => {
+    const tempElement = {
+      ...element,
+      style: { ...element.style, x: newPosition.x, y: newPosition.y }
+    };
+    
+    const otherElements: ElementRendererProps['element'][] = []; // Get from props
+    const collisions = CanvasCalculationService.detectCollisions(
+      tempElement,
+      otherElements,
+      2 // tolerance
+    );
+    
+    // Highlight colliding elements or show warning
+    if (collisions.length > 0) {
+      console.log('Collision detected with:', collisions.map(el => el.id));
+    }
   };
 
   return (

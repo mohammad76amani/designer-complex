@@ -1,30 +1,31 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { FloatingStyleEditorProps } from '../types/template';
 import AnimationEditor from './AnimationEditor';
+import ElementManagementService from '../services/elementManagementService';
 
-const FloatingStyleEditor: React.FC<FloatingStyleEditorProps> = ({ 
-  element, 
+const FloatingStyleEditor: React.FC<FloatingStyleEditorProps> = ({
+  element,
   onUpdateElement,
   onClose
 }) => {
   const editorRef = useRef<HTMLDivElement>(null);
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const [activeTab, setActiveTab] = useState('style'); // 'style', 'content', 'effects', 'animation'
-  
+
   // Set initial position based on element position
   useEffect(() => {
     // Position the editor to the right of the element
     const x = element.style.x + (element.style.width as number) + 20;
     // Align with the top of the element
     const y = element.style.y;
-    
+
     // Adjust if it would go off-screen
     const adjustedX = Math.min(x, window.innerWidth - 280);
     const adjustedY = Math.min(y, window.innerHeight - 300);
-    
+
     setPosition({ x: adjustedX, y: adjustedY });
   }, [element]);
-  
+
   // Handle click outside to close
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -32,76 +33,73 @@ const FloatingStyleEditor: React.FC<FloatingStyleEditorProps> = ({
         onClose();
       }
     };
-    
+
     document.addEventListener('mousedown', handleClickOutside);
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, [onClose]);
-  
+
   // Update element style
-const updateStyle = (property: string, value: any) => {
-  if (property.includes('.')) {
-    const [parent, child] = property.split('.');
-    
-    if (parent === 'animation') {
-      // Create animation object if it doesn't exist
-      const currentAnimation = element.animation || {};
-      
-      onUpdateElement({
-        ...element,
-        animation: {
-          ...currentAnimation,
-          [child]: value
-        }
-      });
+  const updateStyle = (property: string, value: any) => {
+    let updatedElement = { ...element };
+
+    if (property.includes('.')) {
+      const [parent, child] = property.split('.');
+      if (parent === 'animation') {
+        const currentAnimation = element.animation || {};
+        updatedElement = {
+          ...element,
+          animation: {
+            ...currentAnimation,
+            [child]: value,
+            click: 'none'
+          }
+        };
+      }
     } else {
-      onUpdateElement({
-        ...element,
-        style: {
-          ...element.style,
-          [property]: value
-        }
-      });
+      if (element.type === 'shape' && property === 'backgroundColor') {
+        updatedElement = {
+          ...element,
+          style: {
+            ...element.style,
+            backgroundColor: 'rgba(255, 0, 0, 0)',
+            color: value
+          }
+        };
+      } else {
+        updatedElement = {
+          ...element,
+          style: {
+            ...element.style,
+            [property]: value
+          }
+        };
+      }
     }
-  } else {
-    // Special handling for shape elements
-    if (element.type === 'shape' && property === 'backgroundColor') {
-      console.log(`Updating shape background color to: ${value}`);
-      
-      // For shape elements, we want to update the background color directly
-      onUpdateElement({
-        ...element,
-        style: {
-          ...element.style,
-          backgroundColor: 'rgba(255, 0, 0, 0)', // Example color, adjust as needed
-          color: value
-        }
-      });
+
+    // Validate before updating
+    const validation = ElementManagementService.validateElement(updatedElement);
+    if (validation.isValid) {
+      onUpdateElement(updatedElement);
     } else {
-      // For other elements, update the style normally
-      onUpdateElement({
-        ...element,
-        style: {
-          ...element.style,
-          [property]: value
-        }
-      });
+      console.warn('Element validation failed:', validation.errors);
+      // Still update but log warnings
+      onUpdateElement(updatedElement);
     }
-  }
-};
-  
+  };
+
   // Update element attributes (src, href, alt)
- const updateAttribute = (attribute: string, value: string | boolean) => {
-  console.log(`Updating attribute: ${attribute} to value: ${value}`);
-  onUpdateElement({
-    ...element,
-    [attribute]: value
-  });
-};
+  const updateAttribute = (attribute: string, value: string | boolean) => {
+    console.log(`Updating attribute: ${attribute} to value: ${value}`);
+    onUpdateElement({
+      ...element,
+      [attribute]: value
+    });
+  };
 
 
-  
+
   // Update element content
   const updateContent = (value: string) => {
     onUpdateElement({
@@ -109,55 +107,55 @@ const updateStyle = (property: string, value: any) => {
       content: value
     });
   };
-  
+
   // Render color picker
   const renderColorPicker = (label: string, property: string, value: string) => (
     <div className="style-control">
       <label>{label}</label>
       <div className="color-picker-container">
-        <input 
-          type="color" 
-          value={value} 
+        <input
+          type="color"
+          value={value}
           onChange={(e) => updateStyle(property, e.target.value)}
         />
-        <input 
-          type="text" 
-          value={value} 
+        <input
+          type="text"
+          value={value}
           onChange={(e) => updateStyle(property, e.target.value)}
           placeholder="#RRGGBB"
         />
       </div>
     </div>
   );
-  
+
   // Render number input with slider
   const renderNumberInput = (
-    label: string, 
-    property: string, 
-    value: number, 
-    min: number, 
-    max: number, 
+    label: string,
+    property: string,
+    value: number,
+    min: number,
+    max: number,
     step: number = 1,
     unit: string = 'px'
   ) => (
     <div className="style-control">
       <label>{label}</label>
       <div className="number-input-container">
-        <input 
-          type="range" 
-          min={min} 
-          max={max} 
+        <input
+          type="range"
+          min={min}
+          max={max}
           step={step}
-          value={value} 
+          value={value}
           onChange={(e) => updateStyle(property, parseFloat(e.target.value))}
         />
         <div className="number-input-value">
-          <input 
-            type="number" 
-            min={min} 
-            max={max} 
+          <input
+            type="number"
+            min={min}
+            max={max}
             step={step}
-            value={value} 
+            value={value}
             onChange={(e) => updateStyle(property, parseFloat(e.target.value))}
           />
           <span>{unit}</span>
@@ -165,18 +163,18 @@ const updateStyle = (property: string, value: any) => {
       </div>
     </div>
   );
-  
+
   // Render select dropdown
   const renderSelect = (
-    label: string, 
-    property: string, 
-    value: string, 
+    label: string,
+    property: string,
+    value: string,
     options: { value: string, label: string }[]
   ) => (
     <div className="style-control">
       <label>{label}</label>
-      <select 
-        value={value} 
+      <select
+        value={value}
         onChange={(e: React.ChangeEvent<HTMLSelectElement>) => updateStyle(property, e.target.value)}
       >
         {options.map(option => (
@@ -187,40 +185,40 @@ const updateStyle = (property: string, value: any) => {
       </select>
     </div>
   );
-  
+
   // Render text input
   const renderTextInput = (
-    label: string, 
-    property: string, 
+    label: string,
+    property: string,
     value: string
   ) => (
     <div className="style-control">
       <label>{label}</label>
-      <input 
-        type="text" 
-        value={value} 
+      <input
+        type="text"
+        value={value}
         onChange={(e) => updateAttribute(property, e.target.value)}
         placeholder={label}
       />
     </div>
   );
-  
+
   // Render text area
   const renderTextArea = (
-    label: string, 
+    label: string,
     value: string
   ) => (
     <div className="style-control">
       <label>{label}</label>
-      <textarea 
-        value={value} 
+      <textarea
+        value={value}
         onChange={(e) => updateContent(e.target.value)}
         rows={3}
         placeholder={label}
       />
     </div>
   );
-  
+
   // Render style tab content
   const renderStyleTab = () => (
     <div className="tab-content">
@@ -230,13 +228,13 @@ const updateStyle = (property: string, value: any) => {
         {renderColorPicker('Background', 'backgroundColor', element.style.backgroundColor)}
         {renderNumberInput('Border Radius', 'borderRadius', element.style.borderRadius, 0, 100)}
         {renderNumberInput('Z-Index', 'zIndex', element.style.zIndex, 0, 1000, 1, '')}
-        
+
         {/* Add opacity control - not in the original template */}
-        {renderNumberInput('Opacity', 'opacity', 
-          element.style.opacity !== undefined ? element.style.opacity : 1, 
+        {renderNumberInput('Opacity', 'opacity',
+          element.style.opacity !== undefined ? element.style.opacity : 1,
           0, 1, 0.1, '')}
       </div>
-      
+
       {/* Element-specific controls */}
       {(element.type === 'button' || element.type === 'paragraph' || element.type === 'heading') && (
         <div className="control-group">
@@ -262,227 +260,225 @@ const updateStyle = (property: string, value: any) => {
             { value: 'right', label: 'Right' }
           ])}
           {renderNumberInput('Padding', 'padding', element.style.padding, 0, 50)}
-          
+
           {/* Add letter spacing - not in the original template */}
-          {renderNumberInput('Letter Spacing', 'letterSpacing', 
-            element.style.letterSpacing !== undefined ? element.style.letterSpacing : 0, 
+          {renderNumberInput('Letter Spacing', 'letterSpacing',
+            element.style.letterSpacing !== undefined ? element.style.letterSpacing : 0,
             -5, 10, 0.1, 'px')}
-          
+
           {/* Add line height - not in the original template */}
-          {renderNumberInput('Line Height', 'lineHeight', 
-            element.style.lineHeight !== undefined ? element.style.lineHeight : 1.5, 
+          {renderNumberInput('Line Height', 'lineHeight',
+            element.style.lineHeight !== undefined ? element.style.lineHeight : 1.5,
             0.5, 3, 0.1, '')}
         </div>
       )}
-      
+
       {/* Add border controls - not in the original template */}
       <div className="control-group">
         <h4>Border</h4>
-        {renderNumberInput('Border Width', 'borderWidth', 
-          element.style.borderWidth !== undefined ? element.style.borderWidth : 0, 
+        {renderNumberInput('Border Width', 'borderWidth',
+          element.style.borderWidth !== undefined ? element.style.borderWidth : 0,
           0, 20, 1, 'px')}
-        {renderSelect('Border Style', 'borderStyle', 
+        {renderSelect('Border Style', 'borderStyle',
           element.style.borderStyle !== undefined ? element.style.borderStyle : 'none', [
-            { value: 'none', label: 'None' },
-            { value: 'solid', label: 'Solid' },
-            { value: 'dashed', label: 'Dashed' },
-            { value: 'dotted', label: 'Dotted' }
-          ])}
-        {renderColorPicker('Border Color', 'borderColor', 
+          { value: 'none', label: 'None' },
+          { value: 'solid', label: 'Solid' },
+          { value: 'dashed', label: 'Dashed' },
+          { value: 'dotted', label: 'Dotted' }
+        ])}
+        {renderColorPicker('Border Color', 'borderColor',
           element.style.borderColor !== undefined ? element.style.borderColor : '#000000')}
       </div>
-      
+
       {/* Add shadow controls - not in the original template */}
       <div className="control-group">
         <h4>Shadow</h4>
-        {renderNumberInput('Shadow Blur', 'boxShadowBlur', 
-          element.style.boxShadowBlur !== undefined ? element.style.boxShadowBlur : 0, 
+        {renderNumberInput('Shadow Blur', 'boxShadowBlur',
+          element.style.boxShadowBlur !== undefined ? element.style.boxShadowBlur : 0,
           0, 50, 1, 'px')}
-        {renderNumberInput('Shadow Spread', 'boxShadowSpread', 
-          element.style.boxShadowSpread !== undefined ? element.style.boxShadowSpread : 0, 
+        {renderNumberInput('Shadow Spread', 'boxShadowSpread',
+          element.style.boxShadowSpread !== undefined ? element.style.boxShadowSpread : 0,
           0, 50, 1, 'px')}
-        {renderColorPicker('Shadow Color', 'boxShadowColor', 
+        {renderColorPicker('Shadow Color', 'boxShadowColor',
           element.style.boxShadowColor !== undefined ? element.style.boxShadowColor : 'rgba(0,0,0,0.2)')}
       </div>
     </div>
   );
-  
+
   // Render content tab
-const renderContentTab = () => (
-  <div className="tab-content">
-    {/* Only show text tab for text elements */}
-    {(element.type === 'button' || element.type === 'paragraph' || element.type === 'heading') && (
-      <div className="control-group">
-        <h4>Text Content</h4>
-        {renderTextArea('Content', element.content)}
-      </div>
-    )}
-    
-    {/* Button-specific controls */}
-    {element.type === 'button' && (
-      <div className="control-group">
-        <h4>Button Properties</h4>
-        {renderTextInput('Link URL', 'href', element.href || '')}
-        
-        {/* Add target attribute - not in the original template */}
-        {renderSelect('Open Link In', 'target', 
-          element.target !== undefined ? element.target : '_self', [
+  const renderContentTab = () => (
+    <div className="tab-content">
+      {/* Only show text tab for text elements */}
+      {(element.type === 'button' || element.type === 'paragraph' || element.type === 'heading') && (
+        <div className="control-group">
+          <h4>Text Content</h4>
+          {renderTextArea('Content', element.content)}
+        </div>
+      )}
+
+      {/* Button-specific controls */}
+      {element.type === 'button' && (
+        <div className="control-group">
+          <h4>Button Properties</h4>
+          {renderTextInput('Link URL', 'href', element.href || '')}
+
+          {/* Add target attribute - not in the original template */}
+          {renderSelect('Open Link In', 'target',
+            element.target !== undefined ? element.target : '_self', [
             { value: '_self', label: 'Same Window' },
             { value: '_blank', label: 'New Window' }
           ])}
-      </div>
-    )}
-    
-    {/* Image-specific controls */}
-    {element.type === 'image' && (
-      <div className="control-group">
-        <h4>Image Properties</h4>
-        {renderTextInput('Image URL', 'src', element.src || '')}
-        {renderTextInput('Alt Text', 'alt', element.alt || '')}
-        
-        {/* Add object-fit property - not in the original template */}
-        {renderSelect('Image Fit', 'objectFit', 
-          element.style.objectFit !== undefined ? element.style.objectFit : 'cover', [
+        </div>
+      )}
+
+      {/* Image-specific controls */}
+      {element.type === 'image' && (
+        <div className="control-group">
+          <h4>Image Properties</h4>
+          {renderTextInput('Image URL', 'src', element.src || '')}
+          {renderTextInput('Alt Text', 'alt', element.alt || '')}
+
+          {/* Add object-fit property - not in the original template */}
+          {renderSelect('Image Fit', 'objectFit',
+            element.style.objectFit !== undefined ? element.style.objectFit : 'cover', [
             { value: 'cover', label: 'Cover' },
             { value: 'contain', label: 'Contain' },
             { value: 'fill', label: 'Fill' },
             { value: 'none', label: 'None' }
           ])}
-      </div>
-    )}
-    
-    {/* Shape-specific controls */}
-   // Add this to the renderContentTab function for shape elements
-{element.type === 'shape' && (
-  <div className="control-group">
-    <h4>Shape Properties</h4>
-    <div className="style-control">
-      <label>Shape Type</label>
-      <select 
-        value={element.shapeType || 'rectangle'} 
-        onChange={(e) => {
-          const newShapeType = e.target.value;
-          console.log(`Changing shape type to: ${newShapeType} for element ID: ${element.id}`);
-          
-          // Create a completely new element object to ensure React detects the change
-          const updatedElement = {
-            ...element,
-            shapeType: newShapeType
-          };
-          
-          console.log('Updated element:', updatedElement);
-          onUpdateElement(updatedElement);
-        }}
-      >
-        <option value="rectangle">Rectangle</option>
-        <option value="circle">Circle</option>
-        <option value="triangle">Triangle</option>
-        <option value="arrow">Arrow</option>
-        <option value="star">Star</option>
-      </select>
-    </div>
-  </div>
-)}
+        </div>
+      )}
 
-    {/* Video-specific controls */}
-    {element.type === 'video' && (
-      <div className="control-group">
-        <h4>Video Properties</h4>
-        {renderTextInput('Video URL', 'videoSrc', element.videoSrc || '')}
-        
-        <div className="style-control">
-          <label>Video Options</label>
-          <div className="checkbox-group">
-            <label className="checkbox-label">
-              <input 
-                type="checkbox" 
-                checked={element.autoplay || false} 
-                onChange={(e) => updateAttribute('autoplay', e.target.checked)}
-              />
-              Autoplay
-            </label>
-            
-            <label className="checkbox-label">
-              <input 
-                type="checkbox" 
-                checked={element.loop || false} 
-                onChange={(e) => updateAttribute('loop', e.target.checked)}
-              />
-              Loop
-            </label>
-            
-            <label className="checkbox-label">
-              <input 
-                type="checkbox" 
-                checked={element.muted || false} 
-                onChange={(e) => updateAttribute('muted', e.target.checked)}
-              />
-              Muted
-            </label>
-            
-            <label className="checkbox-label">
-              <input 
-                type="checkbox" 
-                checked={element.controls || true} 
-                onChange={(e) => updateAttribute('controls', e.target.checked)}
-              />
-              Show Controls
-            </label>
+      {/* Shape-specific controls */}
+      {element.type === 'shape' && (
+        <div className="control-group">
+          <h4>Shape Properties</h4>
+          <div className="style-control">
+            <label>Shape Type</label>
+            <select
+              value={element.shapeType || 'rectangle'}
+              onChange={(e) => {
+                const newShapeType = e.target.value;
+                console.log(`Changing shape type to: ${newShapeType} for element ID: ${element.id}`);
+
+                const updatedElement = {
+                  ...element,
+                  shapeType: newShapeType
+                };
+
+                console.log('Updated element:', updatedElement);
+                onUpdateElement(updatedElement);
+              }}
+            >
+              <option value="rectangle">Rectangle</option>
+              <option value="circle">Circle</option>
+              <option value="triangle">Triangle</option>
+              <option value="arrow">Arrow</option>
+              <option value="star">Star</option>
+            </select>
           </div>
         </div>
-        
-        {/* Add object-fit property */}
-        {renderSelect('Video Fit', 'objectFit', 
-          element.style.objectFit !== undefined ? element.style.objectFit : 'cover', [
+      )}
+
+      {/* Video-specific controls */}
+      {element.type === 'video' && (
+        <div className="control-group">
+          <h4>Video Properties</h4>
+          {renderTextInput('Video URL', 'videoSrc', element.videoSrc || '')}
+
+          <div className="style-control">
+            <label>Video Options</label>
+            <div className="checkbox-group">
+              <label className="checkbox-label">
+                <input
+                  type="checkbox"
+                  checked={element.autoplay || false}
+                  onChange={(e) => updateAttribute('autoplay', e.target.checked)}
+                />
+                Autoplay
+              </label>
+
+              <label className="checkbox-label">
+                <input
+                  type="checkbox"
+                  checked={element.loop || false}
+                  onChange={(e) => updateAttribute('loop', e.target.checked)}
+                />
+                Loop
+              </label>
+
+              <label className="checkbox-label">
+                <input
+                  type="checkbox"
+                  checked={element.muted || false}
+                  onChange={(e) => updateAttribute('muted', e.target.checked)}
+                />
+                Muted
+              </label>
+
+              <label className="checkbox-label">
+                <input
+                  type="checkbox"
+                  checked={element.controls || true}
+                  onChange={(e) => updateAttribute('controls', e.target.checked)}
+                />
+                Show Controls
+              </label>
+            </div>
+          </div>
+
+          {/* Add object-fit property */}
+          {renderSelect('Video Fit', 'objectFit',
+            element.style.objectFit !== undefined ? element.style.objectFit : 'cover', [
             { value: 'cover', label: 'Cover' },
             { value: 'contain', label: 'Contain' },
             { value: 'fill', label: 'Fill' },
             { value: 'none', label: 'None' }
           ])}
-      </div>
-    )}
-  </div>
-);
+        </div>
+      )}
+    </div>
+  );
 
-  
+
   // Render effects tab
   const renderEffectsTab = () => (
-  <div className="tab-content">
-    <div className="control-group">
-      <h4>Transform</h4>
-      {/* Rotation control */}
-      {renderNumberInput('Rotation', 'rotate', 
-        element.style.rotate !== undefined ? element.style.rotate : 0, 
-        0, 360, 1, 'deg')}
-      
-      {/* Scale control */}
-      {renderNumberInput('Scale', 'scale', 
-        element.style.scale !== undefined ? element.style.scale : 1, 
-        0.1, 3, 0.1, '')}
-    </div>
-    
-    <div className="control-group">
-      <h4>Filters</h4>
-      {/* Blur filter - updated to use direct property */}
-      {renderNumberInput('Blur', 'blur', 
-        element.style.blur !== undefined ? element.style.blur : 0, 
-        0, 20, 0.5, 'px')}
-      
-      {/* Brightness filter - updated to use direct property */}
-      {renderNumberInput('Brightness', 'brightness', 
-        element.style.brightness !== undefined ? element.style.brightness : 100, 
-        0, 200, 5, '%')}
-      
-      {/* Contrast filter - updated to use direct property */}
-      {renderNumberInput('Contrast', 'contrast', 
-        element.style.contrast !== undefined ? element.style.contrast : 100, 
-        0, 200, 5, '%')}
-    </div>
-    
-    <div className="control-group">
-      <h4>Hover Animation</h4>
-      {renderSelect('Effect', 'animation.hover', 
-        element.animation?.hover || 'none', [
+    <div className="tab-content">
+      <div className="control-group">
+        <h4>Transform</h4>
+        {/* Rotation control */}
+        {renderNumberInput('Rotation', 'rotate',
+          element.style.rotate !== undefined ? element.style.rotate : 0,
+          0, 360, 1, 'deg')}
+
+        {/* Scale control */}
+        {renderNumberInput('Scale', 'scale',
+          element.style.scale !== undefined ? element.style.scale : 1,
+          0.1, 3, 0.1, '')}
+      </div>
+
+      <div className="control-group">
+        <h4>Filters</h4>
+        {/* Blur filter - updated to use direct property */}
+        {renderNumberInput('Blur', 'blur',
+          element.style.blur !== undefined ? element.style.blur : 0,
+          0, 20, 0.5, 'px')}
+
+        {/* Brightness filter - updated to use direct property */}
+        {renderNumberInput('Brightness', 'brightness',
+          element.style.brightness !== undefined ? element.style.brightness : 100,
+          0, 200, 5, '%')}
+
+        {/* Contrast filter - updated to use direct property */}
+        {renderNumberInput('Contrast', 'contrast',
+          element.style.contrast !== undefined ? element.style.contrast : 100,
+          0, 200, 5, '%')}
+      </div>
+
+      <div className="control-group">
+        <h4>Hover Animation</h4>
+        {renderSelect('Effect', 'animation.hover',
+          element.animation?.hover || 'none', [
           { value: 'none', label: 'None' },
           { value: 'bg-color', label: 'Background Color' },
           { value: 'text-color', label: 'Text Color' },
@@ -491,59 +487,48 @@ const renderContentTab = () => (
           { value: 'shadow', label: 'Add Shadow' },
           { value: 'border', label: 'Add Border' }
         ])}
-      
-      {element.animation?.hover === 'bg-color' && (
-        renderColorPicker('Background Color', 'animation.hoverBgColor', 
-          element.animation?.hoverBgColor || '#3498db')
-      )}
-      
-      {element.animation?.hover === 'text-color' && (
-        renderColorPicker('Text Color', 'animation.hoverTextColor', 
-          element.animation?.hoverTextColor || '#ffffff')
-      )}
-      
-      {element.animation?.hover === 'border' && (
-        renderColorPicker('Border Color', 'animation.hoverBorderColor', 
-          element.animation?.hoverBorderColor || '#3498db')
-      )}
-    </div>
-    
-    <div className="control-group">
-      <h4>Click Animation</h4>
-      {renderSelect('Effect', 'animation.click', 
-        element.animation?.click || 'none', [
+
+        {element.animation?.hover === 'bg-color' && (
+          renderColorPicker('Background Color', 'animation.hoverBgColor',
+            element.animation?.hoverBgColor || '#3498db')
+        )}
+
+        {element.animation?.hover === 'text-color' && (
+          renderColorPicker('Text Color', 'animation.hoverTextColor',
+            element.animation?.hoverTextColor || '#ffffff')
+        )}
+
+        {element.animation?.hover === 'border' && (
+          renderColorPicker('Border Color', 'animation.hoverBorderColor',
+            element.animation?.hoverBorderColor || '#3498db')
+        )}
+      </div>
+
+      <div className="control-group">
+        <h4>Click Animation</h4>
+        {renderSelect('Effect', 'animation.click',
+          element.animation?.click || 'none', [
           { value: 'none', label: 'None' },
           { value: 'bg-color', label: 'Background Color' },
           { value: 'text-color', label: 'Text Color' },
           { value: 'scale-down', label: 'Scale Down' }
         ])}
-      
-      {element.animation?.click === 'bg-color' && (
-        renderColorPicker('Background Color', 'animation.clickBgColor', 
-          element.animation?.clickBgColor || '#2980b9')
-      )}
-      
-      {element.animation?.click === 'text-color' && (
-        renderColorPicker('Text Color', 'animation.clickTextColor', 
-          element.animation?.clickTextColor || '#ffffff')
-      )}
-    </div>
-  </div>
-);
 
-  
-  // Render animation tab
-  const renderAnimationTab = () => (
-    <div className="tab-content">
-      <AnimationEditor 
-        element={element}
-        onUpdateElement={onUpdateElement}
-      />
+        {element.animation?.click === 'bg-color' && (
+          renderColorPicker('Background Color', 'animation.clickBgColor',
+            element.animation?.clickBgColor || '#2980b9')
+        )}
+
+        {element.animation?.click === 'text-color' && (
+          renderColorPicker('Text Color', 'animation.clickTextColor',
+            element.animation?.clickTextColor || '#ffffff')
+        )}
+      </div>
     </div>
   );
-  
+
   return (
-    <div 
+    <div
       ref={editorRef}
       className="floating-style-editor"
       style={{
@@ -562,41 +547,41 @@ const renderContentTab = () => (
         <h3>{element.type.charAt(0).toUpperCase() + element.type.slice(1)} Properties</h3>
         <button className="close-button" onClick={onClose}>×</button>
       </div>
-      
+
       <div className="editor-tabs">
-        <button 
+        <button
           className={`tab-button ${activeTab === 'style' ? 'active' : ''}`}
           onClick={() => setActiveTab('style')}
         >
           Style
         </button>
-        <button 
+        <button
           className={`tab-button ${activeTab === 'content' ? 'active' : ''}`}
           onClick={() => setActiveTab('content')}
         >
           Content
         </button>
-        <button 
+        <button
           className={`tab-button ${activeTab === 'effects' ? 'active' : ''}`}
           onClick={() => setActiveTab('effects')}
         >
           Effects
         </button>
-        <button 
+        <button
           className={`tab-button ${activeTab === 'animation' ? 'active' : ''}`}
           onClick={() => setActiveTab('animation')}
         >
           Animation
         </button>
       </div>
-      
+
       <div className="editor-content">
         {activeTab === 'style' && renderStyleTab()}
         {activeTab === 'content' && renderContentTab()}
         {activeTab === 'effects' && renderEffectsTab()}
         {activeTab === 'animation' && <AnimationEditor element={element} onUpdateElement={onUpdateElement} />}
       </div>
-      
+
       <style jsx>{`
         .floating-style-editor {
           font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;

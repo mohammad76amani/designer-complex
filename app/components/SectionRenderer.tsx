@@ -28,13 +28,13 @@ const SectionRenderer: React.FC<SectionRendererProps> = ({ sectionKey, section }
   const { type, settings, blocks } = section;
    
   const sectionStyle: React.CSSProperties = {
-    paddingTop: `${settings.paddingTop}px`,
-    paddingBottom: `${settings.paddingBottom}px`,
-    paddingLeft: `${settings.paddingLeft}px`,
-    paddingRight: `${settings.paddingRight}px`,
-    marginTop: settings.marginTop ? `${settings.marginTop}px` : undefined,
-    marginBottom: settings.marginBottom ? `${settings.marginBottom}px` : undefined,
-    backgroundColor: settings.backgroundColor,
+    paddingTop: `${settings?.paddingTop}px`,
+    paddingBottom: `${settings?.paddingBottom}px`,
+    paddingLeft: `${settings?.paddingLeft}px`,
+    paddingRight: `${settings?.paddingRight}px`,
+    marginTop: settings?.marginTop ? `${settings?.marginTop}px` : undefined,
+    marginBottom: settings?.marginBottom ? `${settings?.marginBottom}px` : undefined,
+    backgroundColor: settings?.backgroundColor,
   };
   
   

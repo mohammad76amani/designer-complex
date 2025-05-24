@@ -1,11 +1,12 @@
 import React, { useRef, useState, useEffect } from 'react';
 import ElementRenderer from './ElementRenderer';
 import { CanvasRendererProps, Element } from '../types/template';
+import ElementManagementService from '../services/elementManagementService';
+import CanvasCalculationService from '../services/canvasCalculationService';
 
 const CanvasRenderer: React.FC<CanvasRendererProps> = ({ 
   blocks, 
   onSelectElement,
-  selectedElementId,
   selectedElementIds = [],
   onUpdateElement,
   onUpdateElements,
@@ -20,13 +21,13 @@ const CanvasRenderer: React.FC<CanvasRendererProps> = ({
   
   // State for group dragging and resizing
   const [activeGroupId, setActiveGroupId] = useState<string | null>(null);
-  const [isDraggingGroup, setIsDraggingGroup] = useState(false);
-  const [isResizingGroup, setIsResizingGroup] = useState(false);
+  const [isDraggingGroup, setIsDraggingGroup] = useState<boolean>(false);
+  const [isResizingGroup, setIsResizingGroup] = useState<boolean>(false);
   const [resizeHandle, setResizeHandle] = useState<string | null>(null);
-  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
-  const [initialSize, setInitialSize] = useState({ width: 0, height: 0 });
-  const [initialPosition, setInitialPosition] = useState({ x: 0, y: 0 });
-  const [initialMousePosition, setInitialMousePosition] = useState({ x: 0, y: 0 });
+  const [dragOffset, setDragOffset] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+  const [initialSize, setInitialSize] = useState<{ width: number; height: number; x: number; y: number }>({ width: 0, height: 0, x: 0, y: 0 });
+  const [initialPosition, setInitialPosition] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+  const [initialMousePosition, setInitialMousePosition] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   
   // Handle both setting and settings properties
   const settings = blocks.setting || blocks.settings;
@@ -45,7 +46,7 @@ const CanvasRenderer: React.FC<CanvasRendererProps> = ({
     overflow: 'hidden',
   };
   
-  const handleCanvasContextMenu = (e: React.MouseEvent) => {
+  const handleCanvasContextMenu = (e: React.MouseEvent<HTMLDivElement>) => {
     e.preventDefault();
     
     // Only handle direct right-clicks on the canvas, not on elements
@@ -55,7 +56,7 @@ const CanvasRenderer: React.FC<CanvasRendererProps> = ({
   };
   
   // Handle canvas click to close context menu and clear selection if not multi-selecting
-  const handleCanvasClick = (e: React.MouseEvent) => {
+  const handleCanvasClick = (e: React.MouseEvent<HTMLDivElement>) => {
     // Only handle direct clicks on the canvas, not on elements
     if (e.target === e.currentTarget) {
       if (onCloseContextMenu) {
@@ -70,7 +71,7 @@ const CanvasRenderer: React.FC<CanvasRendererProps> = ({
   };
   
   // Handle group mouse down
-  const handleGroupMouseDown = (e: React.MouseEvent, groupId: string, groupElement: Element) => {
+  const handleGroupMouseDown = (e: React.MouseEvent<HTMLDivElement>, groupId: string, groupElement: Element) => {
     // Only respond to left mouse button (button 0)
     if (e.button !== 0) return;
     
@@ -94,7 +95,7 @@ const CanvasRenderer: React.FC<CanvasRendererProps> = ({
   };
   
   // Handle group resize start
-  const handleGroupResizeStart = (e: React.MouseEvent, handle: string, groupId: string, groupElement: Element) => {
+  const handleGroupResizeStart = (e: React.MouseEvent<HTMLDivElement>, handle: string, groupId: string) => {
     // Only respond to left mouse button (button 0)
     if (e.button !== 0) return;
     
@@ -112,7 +113,9 @@ const CanvasRenderer: React.FC<CanvasRendererProps> = ({
       if (rect) {
         setInitialSize({
           width: rect.width,
-          height: rect.height
+          height: rect.height,
+          x: rect.left - canvasRect.left,
+          y: rect.top - canvasRect.top
         });
         
         setInitialPosition({
@@ -133,183 +136,133 @@ const CanvasRenderer: React.FC<CanvasRendererProps> = ({
     const handleMouseMove = (e: MouseEvent) => {
       if (!canvasRef.current || !activeGroupId) return;
       
-      // Get canvas position
-      const canvasRect = canvasRef.current.getBoundingClientRect();
-      
-      // Find the active group element
-      const groupElement = elements.find(el => el.id === activeGroupId);
-      if (!groupElement) return;
+      const canvasCoords = CanvasCalculationService.screenToCanvas(
+        e.clientX,
+        e.clientY,
+        canvasRef.current
+      );
       
       if (isDraggingGroup) {
-        // Calculate new position relative to the canvas
-        const newX = e.clientX - canvasRect.left - dragOffset.x;
-        const newY = e.clientY - canvasRect.top - dragOffset.y;
+        let newX = canvasCoords.x - dragOffset.x;
+        let newY = canvasCoords.y - dragOffset.y;
         
-        // Find the group element in the DOM
+        // Apply snapping for groups
+        const groupElement = elements.find(el => el.id === activeGroupId);
+        if (groupElement) {
+          const tempGroup = {
+            ...groupElement,
+            style: { ...groupElement.style, x: newX, y: newY }
+          };
+          
+          const otherElements = elements.filter(el => el.id !== activeGroupId && !el.parentId);
+          const snapGuides = CanvasCalculationService.calculateSnapGuides(
+            tempGroup,
+            otherElements
+          );
+          
+          if (snapGuides.snappedPosition) {
+            newX = snapGuides.snappedPosition.x;
+            newY = snapGuides.snappedPosition.y;
+          }
+        }
+        
         const groupEl = document.querySelector(`[data-element-id="${activeGroupId}"]`);
         if (groupEl) {
-          // Update group position in real-time
           (groupEl as HTMLElement).style.left = `${newX}px`;
           (groupEl as HTMLElement).style.top = `${newY}px`;
         }
       } else if (isResizingGroup && resizeHandle) {
-        const mouseX = e.clientX - canvasRect.left;
-        const mouseY = e.clientY - canvasRect.top;
-        const deltaX = mouseX - initialMousePosition.x;
-        const deltaY = mouseY - initialMousePosition.y;
-        
-        let newWidth = initialSize.width;
-        let newHeight = initialSize.height;
-        let newX = initialPosition.x;
-        let newY = initialPosition.y;
-        
-        // Handle different resize directions
-        switch (resizeHandle) {
-          case 'e': // East (right)
-            newWidth = Math.max(50, initialSize.width + deltaX);
-            break;
-          case 'w': // West (left)
-            newWidth = Math.max(50, initialSize.width - deltaX);
-            newX = initialPosition.x + deltaX;
-            break;
-          case 's': // South (bottom)
-            newHeight = Math.max(50, initialSize.height + deltaY);
-            break;
-          case 'n': // North (top)
-            newHeight = Math.max(50, initialSize.height - deltaY);
-            newY = initialPosition.y + deltaY;
-            break;
-          case 'se': // Southeast (bottom-right)
-            newWidth = Math.max(50, initialSize.width + deltaX);
-            newHeight = Math.max(50, initialSize.height + deltaY);
-            break;
-          case 'sw': // Southwest (bottom-left)
-            newWidth = Math.max(50, initialSize.width - deltaX);
-            newHeight = Math.max(50, initialSize.height + deltaY);
-            newX = initialPosition.x + deltaX;
-            break;
-          case 'ne': // Northeast (top-right)
-            newWidth = Math.max(50, initialSize.width + deltaX);
-            newHeight = Math.max(50, initialSize.height - deltaY);
-            newY = initialPosition.y + deltaY;
-            break;
-          case 'nw': // Northwest (top-left)
-            newWidth = Math.max(50, initialSize.width - deltaX);
-            newHeight = Math.max(50, initialSize.height - deltaY);
-            newX = initialPosition.x + deltaX;
-            newY = initialPosition.y + deltaY;
-            break;
-        }
-        
-        // Find the group element in the DOM
-        const groupEl = document.querySelector(`[data-element-id="${activeGroupId}"]`);
-        if (groupEl) {
-          // Update group size and position in real-time
-          (groupEl as HTMLElement).style.width = `${newWidth}px`;
-          (groupEl as HTMLElement).style.height = `${newHeight}px`;
-          (groupEl as HTMLElement).style.left = `${newX}px`;
-          (groupEl as HTMLElement).style.top = `${newY}px`;
+        const groupElement = elements.find(el => el.id === activeGroupId);
+        if (groupElement) {
+          const newBounds = CanvasCalculationService.calculateResizeConstraints(
+            groupElement,
+            resizeHandle,
+            canvasCoords,
+            initialSize,
+            initialMousePosition,
+            { width: 100, height: 100 } // min group size
+          );
+          
+          const groupEl = document.querySelector(`[data-element-id="${activeGroupId}"]`);
+          if (groupEl) {
+            (groupEl as HTMLElement).style.width = `${newBounds.width}px`;
+            (groupEl as HTMLElement).style.height = `${newBounds.height}px`;
+            (groupEl as HTMLElement).style.left = `${newBounds.x}px`;
+            (groupEl as HTMLElement).style.top = `${newBounds.y}px`;
+          }
         }
       }
     };
     
-    const handleMouseUp = () => {
-      if ((!isDraggingGroup && !isResizingGroup) || !activeGroupId) {
-        resetGroupState();
-        return;
-      }
-      
-      // Find the active group element
-      const groupElement = elements.find(el => el.id === activeGroupId);
-      if (!groupElement) {
-        resetGroupState();
-        return;
-      }
-      
-      // Find the group element in the DOM
-      const groupEl = document.querySelector(`[data-element-id="${activeGroupId}"]`);
-      if (groupEl && canvasRef.current) {
-        const rect = groupEl.getBoundingClientRect();
-        const canvasRect = canvasRef.current.getBoundingClientRect();
-        
-        const finalX = rect.left - canvasRect.left;
-        const finalY = rect.top - canvasRect.top;
-        const finalWidth = rect.width;
-        const finalHeight = rect.height;
-        
-        // Calculate position change
-        const deltaX = finalX - groupElement.style.x;
-        const deltaY = finalY - groupElement.style.y;
-        
-        // Calculate scale factors for child elements
-        const scaleX = finalWidth / (typeof groupElement.style.width === 'number' ? 
-          groupElement.style.width : parseFloat(groupElement.style.width as string));
-        const scaleY = finalHeight / (typeof groupElement.style.height === 'number' ? 
-          groupElement.style.height : parseFloat(groupElement.style.height as string));
-        
-        // Update the group with the new position and size
-        const updatedGroup = {
-          ...groupElement,
-          style: {
-            ...groupElement.style,
-            x: finalX,
-            y: finalY,
-            width: finalWidth,
-            height: finalHeight
-          }
-        };
-        
-        // Update all child elements to maintain their relative positions
-        const updatedElements = elements.map(el => {
-          if (el.parentId === activeGroupId) {
-            // If resizing, scale the element's position and size
-            if (isResizingGroup) {
-              // Calculate new position based on scale factors
-              const newX = el.style.x * scaleX;
-              const newY = el.style.y * scaleY;
-              
-              // Calculate new size based on scale factors
-              const newWidth = typeof el.style.width === 'number' 
-                ? el.style.width * scaleX 
-                : parseFloat(el.style.width as string) * scaleX;
-              
-              const newHeight = typeof el.style.height === 'number' 
-                ? el.style.height * scaleY 
-                : parseFloat(el.style.height as string) * scaleY;
-              
-              return {
-                ...el,
-                style: {
-                  ...el.style,
-                  x: newX,
-                  y: newY,
-                  width: newWidth,
-                  height: newHeight
-                }
-              };
-            } 
-            // If dragging, just move the element with the group
-            else if (isDraggingGroup) {
-              return el; // Position is relative to group, no need to change
-            }
-          }
-          return el;
-        });
-        
-        // Update the elements array with the updated group and child elements
-        const finalElements = updatedElements.map(el => 
-          el.id === activeGroupId ? updatedGroup : el
-        );
-        
-        // Update elements state
-        if (onUpdateElements) {
-          onUpdateElements(finalElements);
-        }
-      }
-      
-      resetGroupState();
-    };
+   const handleMouseUp = () => {
+  if ((!isDraggingGroup && !isResizingGroup) || !activeGroupId) {
+    resetGroupState();
+    return;
+  }
+
+  const groupElement = ElementManagementService.findElementById(elements, activeGroupId);
+  if (!groupElement) {
+    resetGroupState();
+    return;
+  }
+
+  // Get final position/size and update using service
+  const groupEl = document.querySelector(`[data-element-id="${activeGroupId}"]`);
+  if (groupEl && canvasRef.current) {
+    const rect = groupEl.getBoundingClientRect();
+    const canvasRect = canvasRef.current.getBoundingClientRect();
     
+    const finalX = rect.left - canvasRect.left;
+    const finalY = rect.top - canvasRect.top;
+    const finalWidth = rect.width;
+    const finalHeight = rect.height;
+
+    // Use service to resize the group
+    const updatedGroup = ElementManagementService.resizeElement(
+      groupElement,
+      { width: finalWidth, height: finalHeight },
+      { x: finalX, y: finalY }
+    );
+
+    // Update child elements if resizing
+    if (isResizingGroup) {
+      const scaleX = finalWidth / (typeof groupElement.style.width === 'number' ? 
+        groupElement.style.width : parseFloat(groupElement.style.width as string));
+      const scaleY = finalHeight / (typeof groupElement.style.height === 'number' ? 
+        groupElement.style.height : parseFloat(groupElement.style.height as string));
+
+      const childElements = ElementManagementService.getChildElements(elements, activeGroupId);
+      const updatedChildren = childElements.map(child => ({
+        ...child,
+        style: {
+          ...child.style,
+          x: child.style.x * scaleX,
+          y: child.style.y * scaleY,
+          width: (typeof child.style.width === 'number' ? child.style.width : parseFloat(child.style.width as string)) * scaleX,
+          height: (typeof child.style.height === 'number' ? child.style.height : parseFloat(child.style.height as string)) * scaleY
+        }
+      }));
+
+      const allUpdatedElements = ElementManagementService.updateElements(
+        elements,
+        [updatedGroup, ...updatedChildren]
+      );
+      
+      if (onUpdateElements) {
+        onUpdateElements(allUpdatedElements);
+      }
+    } else {
+      // Just update the group position
+      const updatedElements = ElementManagementService.updateElement(elements, updatedGroup);
+      if (onUpdateElements) {
+        onUpdateElements(updatedElements);
+      }
+    }
+  }
+
+  resetGroupState();
+};
+
     const resetGroupState = () => {
       setActiveGroupId(null);
       setIsDraggingGroup(false);
@@ -361,14 +314,14 @@ const CanvasRenderer: React.FC<CanvasRendererProps> = ({
           cursor: handle.cursor,
           zIndex: 1001
         }}
-        onMouseDown={(e) => handleGroupResizeStart(e, handle.position, groupId, groupElement)}
+        onMouseDown={(e) => handleGroupResizeStart(e, handle.position, groupId)}
       />
     ));
   };
   
   // Render a group element
   const renderGroup = (groupElement: Element) => {
-    const { id, style, childIds = [] } = groupElement;
+    const { id, style,  } = groupElement;
     const isSelected = selectedElementIds.includes(id);
     
     // Find all child elements of this group
@@ -399,7 +352,7 @@ const CanvasRenderer: React.FC<CanvasRendererProps> = ({
           <ElementRenderer 
             key={element.id} 
             element={element} 
-            onSelect={() => onSelectElement(element, false)}
+            onSelect={(isMultiSelect) => onSelectElement(element, isMultiSelect)}
             isSelected={selectedElementIds.includes(element.id)}
             onUpdateElement={onUpdateElement}
             canvasRef={canvasRef}
@@ -435,8 +388,54 @@ const CanvasRenderer: React.FC<CanvasRendererProps> = ({
   };
   
   // Filter elements to get top-level elements (not in any group)
-  const topLevelElements = elements.filter(el => !el.parentId);
+  const topLevelElements = ElementManagementService.getTopLevelElements(elements);
   
+  // Add grid rendering component
+  const renderGrid = () => {
+    if (!settings.showGrid || !canvasRef.current) return null;
+    
+    const canvasRect = canvasRef.current.getBoundingClientRect();
+    const gridLines = CanvasCalculationService.calculateGridLines(
+      { width: canvasRect.width, height: canvasRect.height },
+      settings.gridSize || 20
+    );
+    
+    return (
+      <div className="canvas-grid" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, pointerEvents: 'none' }}>
+        {/* Vertical lines */}
+        {gridLines.vertical.map(x => (
+          <div
+            key={`v-${x}`}
+            style={{
+              position: 'absolute',
+              left: `${x}px`,
+              top: 0,
+              bottom: 0,
+              width: '1px',
+              backgroundColor: 'rgba(0,0,0,0.1)'
+            }}
+          />
+        ))}
+        {/* Horizontal lines */}
+        {gridLines.horizontal.map(y => (
+          <div
+            key={`h-${y}`}
+            style={{
+              position: 'absolute',
+              top: `${y}px`,
+              left: 0,
+              right: 0,
+              height: '1px',
+              backgroundColor: 'rgba(0,0,0,0.1)'
+            }}
+          />
+        ))}
+      </div>
+    );
+  };
+
+
+
   return (
     <div 
       className="canvas" 
@@ -447,29 +446,29 @@ const CanvasRenderer: React.FC<CanvasRendererProps> = ({
       onContextMenu={handleCanvasContextMenu}
       onClick={handleCanvasClick}
     >
+      {renderGrid()}
       {/* Render top-level elements */}
-      
-{topLevelElements.map((element) => {
-  // Render groups differently
-  if (element.type === 'group') {
-    return renderGroup(element);
-  }
+      {topLevelElements.map((element) => {
+        // Render groups differently
+        if (element.type === 'group') {
+          return renderGroup(element);
+        }
         
         // Render regular elements
-         return (
-    <ElementRenderer 
-      key={element.id} 
-      element={element} 
-      onSelect={(isMultiSelect) => onSelectElement(element, isMultiSelect)}
-      isSelected={selectedElementIds.includes(element.id)}
-      onUpdateElement={onUpdateElement}
-      canvasRef={canvasRef}
-      onContextMenu={onElementContextMenu}
-      onOpenStyleEditor={onOpenStyleEditor ? () => onOpenStyleEditor(element) : undefined}
-      isInGroup={false}
-    />
-  );
-})}
+        return (
+          <ElementRenderer 
+            key={element.id} 
+            element={element} 
+            onSelect={(isMultiSelect) => onSelectElement(element, isMultiSelect)}
+            isSelected={selectedElementIds.includes(element.id)}
+            onUpdateElement={onUpdateElement}
+            canvasRef={canvasRef}
+            onContextMenu={onElementContextMenu}
+            onOpenStyleEditor={onOpenStyleEditor ? () => onOpenStyleEditor(element) : undefined}
+            isInGroup={false}
+          />
+        );
+      })}
     </div>
   );
 };

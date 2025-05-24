@@ -1,18 +1,13 @@
 import React from 'react';
-import { Element } from '../types/template';
+import { AnimationEditorProps } from '../types/template';
 import { hoverAnimationOptions, clickAnimationOptions } from '../utils/animationUtils';
-
-interface AnimationEditorProps {
-  element: Element;
-  onUpdateElement: (updatedElement: Element) => void;
-}
 
 const AnimationEditor: React.FC<AnimationEditorProps> = ({ element, onUpdateElement }) => {
   // Initialize animation object if it doesn't exist
   const animation = element.animation || { hover: 'none', click: 'none' };
   
   // Update animation properties
-  const updateAnimation = (property: string, value: any) => {
+  const updateAnimation = (property: string, value: string) => {
     onUpdateElement({
       ...element,
       animation: {
@@ -107,7 +102,7 @@ const AnimationEditor: React.FC<AnimationEditorProps> = ({ element, onUpdateElem
             onChange={(e) => updateAnimation('click', e.target.value)}
           >
             {clickAnimationOptions.map(option => (
-                          <option key={option.value} value={option.value}>
+              <option key={option.value} value={option.value}>
                 {option.label}
               </option>
             ))}
