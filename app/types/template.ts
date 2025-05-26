@@ -413,6 +413,7 @@ export interface ElementToolbarProps {
 /**
  * Props for shape selector component
  */
+
 export interface ShapeSelectorProps {
   onSelectShape: (shapeType: string) => void;
   onClose: () => void;
