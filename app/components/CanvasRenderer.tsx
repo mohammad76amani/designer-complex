@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useRef, useState, useEffect, useCallback } from 'react';
 import ElementRenderer from './ElementRenderer';
 import { CanvasRendererProps, Element } from '../types/template';
 import ElementManagementService from '../services/elementManagementService';
@@ -14,7 +14,8 @@ const CanvasRenderer: React.FC<CanvasRendererProps> = ({
   onCanvasContextMenu,
   onCloseContextMenu,
   canvasRef: externalCanvasRef,
-  onOpenStyleEditor
+  onOpenStyleEditor,
+  onCanvasHeightUpdate // Add this back
 }) => {
   const localCanvasRef = useRef<HTMLDivElement>(null);
   const canvasRef = (externalCanvasRef || localCanvasRef) as React.RefObject<HTMLDivElement>;
@@ -29,6 +30,11 @@ const CanvasRenderer: React.FC<CanvasRendererProps> = ({
   const [initialPosition, setInitialPosition] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   const [initialMousePosition, setInitialMousePosition] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   
+  // Canvas height resize state
+  const [isResizingCanvasHeight, setIsResizingCanvasHeight] = useState<boolean>(false);
+  const [initialCanvasHeight, setInitialCanvasHeight] = useState<number>(0);
+  const [initialCanvasMouseY, setInitialCanvasMouseY] = useState<number>(0);
+  
   // Handle both setting and settings properties
   const settings = blocks.setting || blocks.settings;
   const { elements } = blocks;
@@ -37,14 +43,103 @@ const CanvasRenderer: React.FC<CanvasRendererProps> = ({
     console.error("No settings found in blocks");
     return null;
   }
+
+  // Parse canvas dimensions with responsive width support
+  const parseCanvasDimension = useCallback((dimension: string | number | undefined, defaultValue: number): number => {
+    if (typeof dimension === 'number') {
+      return isNaN(dimension) ? defaultValue : dimension;
+    }
+    
+    if (typeof dimension === 'string') {
+      if (dimension.includes('%')) {
+        return defaultValue;
+      }
+      const parsed = parseFloat(dimension.replace('px', ''));
+      return isNaN(parsed) ? defaultValue : parsed;
+    }
+    
+    return defaultValue;
+  }, []);
+
+  // Get responsive canvas width
+  const getResponsiveCanvasWidth = useCallback((): number => {
+    const breakpoints = settings.breakpoints || { sm: 400, lg: 1000 };
+    const canvasWidth = settings.canvasWidth;
+    
+    if (canvasWidth === 'sm') {
+      return breakpoints.sm;
+    } else if (canvasWidth === 'lg') {
+      return breakpoints.lg;
+    }
+    
+    // Fallback to numeric value or default
+    return parseCanvasDimension(canvasWidth, breakpoints.lg);
+  }, [settings, parseCanvasDimension]);
+
+  const canvasWidth = getResponsiveCanvasWidth();
+  const canvasHeight = parseCanvasDimension(settings.canvasHeight, 600);
   
   const canvasStyle: React.CSSProperties = {
-    width: settings.canvasWidth,
-    height: settings.canvasHeight,
+    width: `${canvasWidth}px`,
+    height: `${canvasHeight}px`,
     backgroundColor: settings.backgroundColor,
     position: 'relative',
     overflow: 'hidden',
+    border: '2px solid #dee2e6',
+    borderRadius: '8px',
+    boxSizing: 'border-box',
+    transition: 'width 0.3s ease-in-out', // Smooth transition when switching breakpoints
   };
+
+  // Handle canvas height resize start
+  const handleCanvasHeightResizeStart = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (e.button !== 0) return; // Only left mouse button
+    e.preventDefault();
+    e.stopPropagation();
+    
+    setIsResizingCanvasHeight(true);
+    setInitialCanvasHeight(canvasHeight);
+    setInitialCanvasMouseY(e.clientY);
+  };
+
+  // Handle canvas height resize
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isResizingCanvasHeight) return;
+      
+      const deltaY = e.clientY - initialCanvasMouseY;
+      const newHeight = Math.max(200, initialCanvasHeight + deltaY); // Min height of 200px
+      
+      // Update canvas height visually
+      if (canvasRef.current) {
+        canvasRef.current.style.height = `${newHeight}px`;
+      }
+    };
+
+    const handleMouseUp = () => {
+      if (!isResizingCanvasHeight) return;
+      
+      const deltaY = window.event ? (window.event as MouseEvent).clientY - initialCanvasMouseY : 0;
+      const newHeight = Math.max(200, initialCanvasHeight + deltaY);
+      
+      // Call the callback to update the template
+      if (onCanvasHeightUpdate) {
+        onCanvasHeightUpdate(newHeight);
+      }
+      
+      setIsResizingCanvasHeight(false);
+    };
+
+    if (isResizingCanvasHeight) {
+      window.addEventListener('mousemove', handleMouseMove);
+      window.addEventListener('mouseup', handleMouseUp);
+    }
+
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isResizingCanvasHeight, initialCanvasHeight, initialCanvasMouseY, onCanvasHeightUpdate]);
   
   const handleCanvasContextMenu = (e: React.MouseEvent<HTMLDivElement>) => {
     e.preventDefault();
@@ -194,74 +289,74 @@ const CanvasRenderer: React.FC<CanvasRendererProps> = ({
       }
     };
     
-   const handleMouseUp = () => {
-  if ((!isDraggingGroup && !isResizingGroup) || !activeGroupId) {
-    resetGroupState();
-    return;
-  }
+    const handleMouseUp = () => {
+      if ((!isDraggingGroup && !isResizingGroup) || !activeGroupId) {
+        resetGroupState();
+        return;
+      }
 
-  const groupElement = ElementManagementService.findElementById(elements, activeGroupId);
-  if (!groupElement) {
-    resetGroupState();
-    return;
-  }
+      const groupElement = ElementManagementService.findElementById(elements, activeGroupId);
+      if (!groupElement) {
+        resetGroupState();
+        return;
+      }
 
-  // Get final position/size and update using service
-  const groupEl = document.querySelector(`[data-element-id="${activeGroupId}"]`);
-  if (groupEl && canvasRef.current) {
-    const rect = groupEl.getBoundingClientRect();
-    const canvasRect = canvasRef.current.getBoundingClientRect();
-    
-    const finalX = rect.left - canvasRect.left;
-    const finalY = rect.top - canvasRect.top;
-    const finalWidth = rect.width;
-    const finalHeight = rect.height;
+      // Get final position/size and update using service
+      const groupEl = document.querySelector(`[data-element-id="${activeGroupId}"]`);
+      if (groupEl && canvasRef.current) {
+        const rect = groupEl.getBoundingClientRect();
+        const canvasRect = canvasRef.current.getBoundingClientRect();
+        
+        const finalX = rect.left - canvasRect.left;
+        const finalY = rect.top - canvasRect.top;
+        const finalWidth = rect.width;
+        const finalHeight = rect.height;
 
-    // Use service to resize the group
-    const updatedGroup = ElementManagementService.resizeElement(
-      groupElement,
-      { width: finalWidth, height: finalHeight },
-      { x: finalX, y: finalY }
-    );
+        // Use service to resize the group
+        const updatedGroup = ElementManagementService.resizeElement(
+          groupElement,
+          { width: finalWidth, height: finalHeight },
+          { x: finalX, y: finalY }
+        );
 
-    // Update child elements if resizing
-    if (isResizingGroup) {
-      const scaleX = finalWidth / (typeof groupElement.style.width === 'number' ? 
-        groupElement.style.width : parseFloat(groupElement.style.width as string));
-      const scaleY = finalHeight / (typeof groupElement.style.height === 'number' ? 
-        groupElement.style.height : parseFloat(groupElement.style.height as string));
+        // Update child elements if resizing
+        if (isResizingGroup) {
+          const scaleX = finalWidth / (typeof groupElement.style.width === 'number' ? 
+            groupElement.style.width : parseFloat(groupElement.style.width as string));
+          const scaleY = finalHeight / (typeof groupElement.style.height === 'number' ? 
+            groupElement.style.height : parseFloat(groupElement.style.height as string));
 
-      const childElements = ElementManagementService.getChildElements(elements, activeGroupId);
-      const updatedChildren = childElements.map(child => ({
-        ...child,
-        style: {
-          ...child.style,
-          x: child.style.x * scaleX,
-          y: child.style.y * scaleY,
-          width: (typeof child.style.width === 'number' ? child.style.width : parseFloat(child.style.width as string)) * scaleX,
-          height: (typeof child.style.height === 'number' ? child.style.height : parseFloat(child.style.height as string)) * scaleY
+          const childElements = ElementManagementService.getChildElements(elements, activeGroupId);
+          const updatedChildren = childElements.map(child => ({
+            ...child,
+            style: {
+              ...child.style,
+              x: child.style.x * scaleX,
+              y: child.style.y * scaleY,
+              width: (typeof child.style.width === 'number' ? child.style.width : parseFloat(child.style.width as string)) * scaleX,
+              height: (typeof child.style.height === 'number' ? child.style.height : parseFloat(child.style.height as string)) * scaleY
+            }
+          }));
+
+          const allUpdatedElements = ElementManagementService.updateElements(
+            elements,
+            [updatedGroup, ...updatedChildren]
+          );
+          
+          if (onUpdateElements) {
+            onUpdateElements(allUpdatedElements);
+          }
+        } else {
+          // Just update the group position
+          const updatedElements = ElementManagementService.updateElement(elements, updatedGroup);
+          if (onUpdateElements) {
+            onUpdateElements(updatedElements);
+          }
         }
-      }));
-
-      const allUpdatedElements = ElementManagementService.updateElements(
-        elements,
-        [updatedGroup, ...updatedChildren]
-      );
-      
-      if (onUpdateElements) {
-        onUpdateElements(allUpdatedElements);
       }
-    } else {
-      // Just update the group position
-      const updatedElements = ElementManagementService.updateElement(elements, updatedGroup);
-      if (onUpdateElements) {
-        onUpdateElements(updatedElements);
-      }
-    }
-  }
 
-  resetGroupState();
-};
+      resetGroupState();
+    };
 
     const resetGroupState = () => {
       setActiveGroupId(null);
@@ -321,7 +416,7 @@ const CanvasRenderer: React.FC<CanvasRendererProps> = ({
   
   // Render a group element
   const renderGroup = (groupElement: Element) => {
-    const { id, style,  } = groupElement;
+    const { id, style } = groupElement;
     const isSelected = selectedElementIds.includes(id);
     
     // Find all child elements of this group
@@ -394,9 +489,8 @@ const CanvasRenderer: React.FC<CanvasRendererProps> = ({
   const renderGrid = () => {
     if (!settings.showGrid || !canvasRef.current) return null;
     
-    const canvasRect = canvasRef.current.getBoundingClientRect();
     const gridLines = CanvasCalculationService.calculateGridLines(
-      { width: canvasRect.width, height: canvasRect.height },
+      { width: canvasWidth, height: canvasHeight },
       settings.gridSize || 20
     );
     
@@ -434,41 +528,117 @@ const CanvasRenderer: React.FC<CanvasRendererProps> = ({
     );
   };
 
+  // Render canvas size indicator
+  const renderCanvasSizeIndicator = () => {
+    const breakpointLabel = settings.canvasWidth === 'sm' ? 'Mobile' : 'Desktop';
+    const breakpointColor = settings.canvasWidth === 'sm' ? '#dc3545' : '#28a745';
+    
+    return (
+      <div
+        style={{
+          position: 'absolute',
+          top: '-35px',
+          left: '0',
+          backgroundColor: breakpointColor,
+          color: 'white',
+          padding: '4px 8px',
+          borderRadius: '4px 4px 0 0',
+          fontSize: '11px',
+          fontWeight: '600',
+          zIndex: 1000,
+          pointerEvents: 'none'
+        }}
+      >
+        {breakpointLabel} ({canvasWidth}×{canvasHeight})
+      </div>
+    );
+  };
 
+  // Render canvas height resize handle
+  const renderCanvasHeightResizeHandle = () => {
+    if (!settings.resizable) return null;
+    
+    return (
+      <div
+        style={{
+          position: 'absolute',
+          bottom: '-5px',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          width: '60px',
+          height: '10px',
+          backgroundColor: '#6c757d',
+          borderRadius: '5px',
+          cursor: 'ns-resize',
+          zIndex: 1002,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          opacity: 0.7,
+          transition: 'opacity 0.2s ease'
+        }}
+        onMouseDown={handleCanvasHeightResizeStart}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.opacity = '1';
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.opacity = '0.7';
+        }}
+        title="Drag to resize canvas height"
+      >
+        <div style={{
+          width: '20px',
+          height: '2px',
+          backgroundColor: 'white',
+          borderRadius: '1px'
+        }} />
+      </div>
+    );
+  };
 
   return (
-    <div 
-      className="canvas" 
-      style={canvasStyle}
-      data-grid-size={settings.gridSize}
-      data-show-grid={settings.showGrid}
-      ref={canvasRef}
-      onContextMenu={handleCanvasContextMenu}
-      onClick={handleCanvasClick}
-    >
-      {renderGrid()}
-      {/* Render top-level elements */}
-      {topLevelElements.map((element) => {
-        // Render groups differently
-        if (element.type === 'group') {
-          return renderGroup(element);
-        }
-        
-        // Render regular elements
-        return (
-          <ElementRenderer 
-            key={element.id} 
-            element={element} 
-            onSelect={(isMultiSelect) => onSelectElement(element, isMultiSelect)}
-            isSelected={selectedElementIds.includes(element.id)}
-            onUpdateElement={onUpdateElement}
-            canvasRef={canvasRef}
-            onContextMenu={onElementContextMenu}
-            onOpenStyleEditor={onOpenStyleEditor ? () => onOpenStyleEditor(element) : undefined}
-            isInGroup={false}
-          />
-        );
-      })}
+    <div style={{ position: 'relative', display: 'inline-block', margin: '40px 20px 20px 20px' }}>
+      {/* Canvas size indicator */}
+      {renderCanvasSizeIndicator()}
+      
+      <div 
+        className="canvas" 
+        style={canvasStyle}
+        data-grid-size={settings.gridSize}
+        data-show-grid={settings.showGrid}
+        data-canvas-width={settings.canvasWidth}
+        data-breakpoint={settings.canvasWidth}
+        ref={canvasRef}
+        onContextMenu={handleCanvasContextMenu}
+        onClick={handleCanvasClick}
+      >
+        {renderGrid()}
+        {/* Render top-level elements */}
+        {topLevelElements.map((element) => {
+          // Render groups differently
+          if (element.type === 'group') {
+            return renderGroup(element);
+          }
+          
+          // Render regular elements
+          return (
+            <ElementRenderer 
+              key={element.id} 
+              element={element} 
+              onSelect={(isMultiSelect) => onSelectElement(element, isMultiSelect)}
+              isSelected={selectedElementIds.includes(element.id)}
+              onUpdateElement={onUpdateElement}
+              canvasRef={canvasRef}
+              onContextMenu={onElementContextMenu}
+              onOpenStyleEditor={onOpenStyleEditor ? () => onOpenStyleEditor(element) : undefined}
+              isInGroup={false}
+            />
+          );
+        })}
+      </div>
+      
+      {/* Canvas height resize handle */}
+      {renderCanvasHeightResizeHandle()}
     </div>
   );
 };

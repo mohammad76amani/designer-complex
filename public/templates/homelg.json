@@ -78,9 +78,9 @@
                   "boxShadowColor": "rgba(0,0,0,0.2)",
                   "rotate": 0,
                   "scale": 1,
-                    "blur": 0,
-                    "brightness": 100,
-                    "contrast": 100
+                  "blur": 0,
+                  "brightness": 100,
+                  "contrast": 100
                 },
                 "href": "https://www.stratstone.com/-/media/stratstone/blog/2024/top-10-best-supercars-of-2024/mclaren-750s-driving-dynamic-hero-1920x774px.ashx",
                 "target": "_self"
@@ -112,11 +112,9 @@
                   "rotate": 0,
                   "scale": 1,
                   "objectFit": "cover",
-                  
-                    "blur": 0,
-                    "brightness": 100,
-                    "contrast": 100
-                  
+                  "blur": 0,
+                  "brightness": 100,
+                  "contrast": 100
                 },
                 "src": "https://www.stratstone.com/-/media/stratstone/blog/2024/top-10-best-supercars-of-2024/mclaren-750s-driving-dynamic-hero-1920x774px.ashx",
                 "alt": "Canvas image"
@@ -149,11 +147,9 @@
                   "boxShadowColor": "rgba(0,0,0,0.2)",
                   "rotate": 0,
                   "scale": 1,
-                  
-                    "blur": 0,
-                    "brightness": 100,
-                    "contrast": 100
-                  
+                  "blur": 0,
+                  "brightness": 100,
+                  "contrast": 100
                 }
               },
               {
@@ -184,20 +180,26 @@
                   "boxShadowColor": "rgba(0,0,0,0.2)",
                   "rotate": 0,
                   "scale": 1,
-                  
-                    "blur": 0,
-                    "brightness": 100,
-                    "contrast": 100
-                  
+                  "blur": 0,
+                  "brightness": 100,
+                  "contrast": 100
                 }
               }
             ],
             "setting": {
-              "canvasWidth": "100%",
-              "canvasHeight": "500px",
+              "canvasWidth": "lg",
+              "canvasHeight": 600,
               "backgroundColor": "#f9fafb",
               "gridSize": 10,
-              "showGrid": false
+              "showGrid": false,
+              "minHeight": 500,
+              "maxHeight": 2000,
+              "autoResize": true,
+              "resizable": true,
+              "breakpoints": {
+                "sm": 400,
+                "lg": 1350
+              }
             }
           }
         }

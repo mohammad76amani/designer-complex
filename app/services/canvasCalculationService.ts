@@ -1003,6 +1003,85 @@ export class CanvasCalculationService {
     return positions;
   }
 
+/**
+ * Calculate optimal canvas height based on elements
+ */
+static calculateOptimalCanvasHeight(
+  elements: Element[],
+  minHeight: number = 600,
+  padding: number = 100
+): number {
+  if (elements.length === 0) {
+    return minHeight;
+  }
+
+  let maxBottom = 0;
+  elements.forEach(element => {
+    const bounds = this.getElementBounds(element);
+    maxBottom = Math.max(maxBottom, bounds.bottom);
+  });
+
+  return Math.max(maxBottom + padding, minHeight);
+}
+/**
+ * Check if element fits within canvas bounds and suggest resize
+ */
+static checkElementFitsCanvas(
+  element: Element,
+  canvasBounds: { width: number; height: number }
+): {
+  fits: boolean;
+  suggestedHeight?: number;
+  suggestedWidth?: number;
+} {
+  const bounds = this.getElementBounds(element);
+  
+  const fitsWidth = bounds.right <= canvasBounds.width;
+  const fitsHeight = bounds.bottom <= canvasBounds.height;
+  
+  return {
+    fits: fitsWidth && fitsHeight,
+    suggestedWidth: fitsWidth ? undefined : bounds.right + 50,
+    suggestedHeight: fitsHeight ? undefined : bounds.bottom + 50
+  };
+}
+
+/**
+ * Auto-resize canvas to accommodate new element
+ */
+static autoResizeCanvasForElement(
+  element: Element,
+  currentCanvasBounds: { width: number; height: number },
+  padding: number = 50
+): { width: number; height: number } {
+  const bounds = this.getElementBounds(element);
+  
+  return {
+    width: Math.max(currentCanvasBounds.width, bounds.right + padding),
+    height: Math.max(currentCanvasBounds.height, bounds.bottom + padding)
+  };
+}
+
+/**
+ * Calculate canvas bounds that fit all elements
+ */
+static calculateCanvasBoundsForElements(
+  elements: Element[],
+  minBounds: { width: number; height: number } = { width: 800, height: 600 },
+  padding: number = 50
+): { width: number; height: number } {
+  if (elements.length === 0) {
+    return minBounds;
+  }
+
+  const boundingBox = this.getElementsBoundingBox(elements);
+  
+  return {
+    width: Math.max(boundingBox.x + boundingBox.width + padding, minBounds.width),
+    height: Math.max(boundingBox.y + boundingBox.height + padding, minBounds.height)
+  };
+}
+
   /**
    * Calculate responsive breakpoint adjustments
    */

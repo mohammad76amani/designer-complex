@@ -1,15 +1,5 @@
 import { Element } from '../types/template';
-
-/**
- * History state interface
- */
-interface HistoryState {
-  elements: Element[];
-  selectedElementIds: string[];
-  selectedElementId: string | null;
-  timestamp: number;
-  description?: string;
-}
+import { HistoryState } from '../types/template';
 
 /**
  * History service for undo/redo functionality

@@ -1,9 +1,5 @@
 import React from 'react';
-
-interface ShapeSelectorProps {
-  onSelectShape: (shapeType: string) => void;
-  onClose: () => void;
-}
+import { ShapeSelectorProps } from '../types/template';
 
 const ShapeSelector: React.FC<ShapeSelectorProps> = ({ onSelectShape, onClose }) => {
   const shapes = [

@@ -379,3 +379,20 @@ body {
 .checkbox-label input[type="checkbox"] {
   margin: 0;
 }
+
+.canvas {
+  transition: height 0.2s ease-in-out;
+}
+
+.canvas:hover .canvas-resize-handle {
+  opacity: 1;
+}
+
+.canvas-resize-handle {
+  opacity: 0;
+  transition: opacity 0.2s ease-in-out;
+}
+
+.canvas-resize-handle:hover {
+  opacity: 1 !important;
+}

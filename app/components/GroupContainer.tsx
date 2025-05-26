@@ -1,19 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Element } from '../types/template';
 import ElementRenderer from './ElementRenderer';
-
-interface GroupContainerProps {
-  group: Element;
-  elements: Element[];
-  onSelect: (e: React.MouseEvent) => void;
-  isSelected: boolean;
-  onUpdateElement: (updatedElement: Element) => void;
-  canvasRef: React.RefObject<HTMLDivElement>;
-  onContextMenu: (element: Element, x: number, y: number) => void;
-  onOpenStyleEditor?: () => void;
-  onSelectGroupElement: (element: Element, isMultiSelect: boolean) => void;
-  selectedElementIds: string[];
-}
+import { GroupContainerProps } from '../types/template';
 
 const GroupContainer: React.FC<GroupContainerProps> = ({
   group,

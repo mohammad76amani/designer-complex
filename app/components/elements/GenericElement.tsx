@@ -1,11 +1,7 @@
 import React from 'react';
 import { Element } from '../../types/template';
 
-interface GenericElementProps {
-  element: Element;
-}
-
-const GenericElement: React.FC<GenericElementProps> = ({ element }) => {
+const GenericElement  = ({ element }:{ element: Element }) => {
   const { type, content } = element;
   
   return (

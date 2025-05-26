@@ -1,11 +1,7 @@
 import React from 'react';
 import { Element } from '../../types/template';
 
-interface VideoElementProps {
-  element: Element;
-}
-
-const VideoElement: React.FC<VideoElementProps> = ({ element }) => {
+const VideoElement: React.FC<{ element: Element }> = ({ element }) => {
   const { src, style } = element;
   
   return (

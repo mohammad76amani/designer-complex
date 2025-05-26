@@ -89,17 +89,20 @@ export interface Blocks {
  * Settings for the canvas block
  */
 export interface BlockSettings {
-  canvasWidth: string;
-  canvasHeight: string;
-  gridSize: number;
-  showGrid: boolean;
-  paddingTop?: number;
-  paddingBottom?: number;
-  paddingLeft?: number;
-  paddingRight?: number;
-  marginTop?: number;
-  marginBottom?: number;
+ canvasWidth?: string | number; // Now supports 'sm', 'lg', or numeric values
+  canvasHeight?: string | number;
   backgroundColor?: string;
+  gridSize?: number;
+  showGrid?: boolean;
+  minHeight?: number;
+  maxHeight?: number;
+  autoResize?: boolean;
+  resizable?: boolean;
+  breakpoints?: {
+    sm: number;
+    lg: number;
+  };
+
 }
 
 //=============================================================================
@@ -292,32 +295,34 @@ export interface FloatingStyleEditorProps {
 export interface CanvasRendererProps {
   blocks: Blocks;
   onSelectElement: (element: Element | null, isMultiSelect?: boolean) => void;
-  selectedElementId?: string;
   selectedElementIds?: string[];
-  onUpdateElement: (updatedElement: Element) => void;
-  onUpdateElements?: (updatedElements: Element[]) => void;
-  onElementContextMenu: (element: Element, x: number, y: number) => void;
+  selectedElementId?: string;
+  onUpdateElement?: (element: Element) => void;
+  onUpdateElements?: (elements: Element[]) => void;
+  onElementContextMenu?: (element: Element, x: number, y: number) => void;
   onCanvasContextMenu?: (x: number, y: number) => void;
   onCloseContextMenu?: () => void;
   canvasRef?: React.RefObject<HTMLDivElement>;
   onOpenStyleEditor?: (element: Element) => void;
+  onCanvasHeightUpdate?: (newHeight: number) => void; // Add this back
 }
+
 
 /**
  * Props for DesignerRenderer component
  */
 export interface DesignerRendererProps {
   template: Template;
-  canvasId?: string;
   onTemplateUpdate?: (updatedTemplate: Template) => void;
 }
 
 /**
  * Props for ElementEditor component
  */
-export interface ElementEditorProps {
-  element: Element;
-  onUpdateElement: (updatedElement: Element) => void;
+export interface DesignerRendererProps {
+  template: Template;
+  canvasId?: string;
+  onTemplateUpdate?: (updatedTemplate: Template) => void;
 }
 
 /**
@@ -362,4 +367,64 @@ export interface AnimationPreviewProps {
 export interface AnimationEditorProps {
   element: Element;
   onUpdateElement: (updatedElement: Element) => void;
+}
+
+
+
+
+
+ export interface CanvasDimensionControlsProps {
+  width: number;
+  height: number;
+  onWidthChange: (width: number) => void;
+  onHeightChange: (height: number) => void;
+  onSizeChange: (width: number, height: number) => void;
+}
+
+/**
+ * Props for ResponsiveCanvasToolbar component
+ */
+
+export interface GroupContainerProps {
+  group: Element;
+  elements: Element[];
+  onSelect: (e: React.MouseEvent) => void;
+  isSelected: boolean;
+  onUpdateElement: (updatedElement: Element) => void;
+  canvasRef: React.RefObject<HTMLDivElement>;
+  onContextMenu: (element: Element, x: number, y: number) => void;
+  onOpenStyleEditor?: () => void;
+  onSelectGroupElement: (element: Element, isMultiSelect: boolean) => void;
+  selectedElementIds: string[];
+}
+
+
+export interface ResponsiveCanvasToolbarProps {
+  currentBreakpoint: 'sm' | 'lg';
+  onBreakpointChange: (breakpoint: 'sm' | 'lg') => void;
+  breakpoints: { sm: number; lg: number };
+}
+
+
+export interface ElementToolbarProps {
+  onAddElement: (elementType: string) => void;
+}
+
+/**
+ * Props for shape selector component
+ */
+export interface ShapeSelectorProps {
+  onSelectShape: (shapeType: string) => void;
+  onClose: () => void;
+}
+
+/**
+ * History state interface
+ */
+ export interface HistoryState {
+  elements: Element[];
+  selectedElementIds: string[];
+  selectedElementId: string | null;
+  timestamp: number;
+  description?: string;
 }

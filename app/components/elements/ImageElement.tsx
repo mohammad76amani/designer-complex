@@ -1,11 +1,8 @@
 import React from 'react';
 import { Element } from '../../types/template';
-import Image from 'next/image';
-interface ImageElementProps {
-  element: Element;
-}
 
-const ImageElement: React.FC<ImageElementProps> = ({ element }) => {
+
+const ImageElement = ({ element }:{element: Element;}) => {
   const { src, alt, style } = element;
   
   return (

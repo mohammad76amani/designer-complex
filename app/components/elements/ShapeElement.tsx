@@ -1,11 +1,8 @@
 import React from 'react';
 import { Element } from '../../types/template';
 
-interface ShapeElementProps {
-  element: Element;
-}
 
-const ShapeElement: React.FC<ShapeElementProps> = ({ element }) => {
+const ShapeElement = ({ element }:{element: Element}) => {
   const { shapeType = 'rectangle', style } = element;
   
   console.log(`Rendering ShapeElement with shapeType: ${shapeType}, backgroundColor: ${style.backgroundColor}`);

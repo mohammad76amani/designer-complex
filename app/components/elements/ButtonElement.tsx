@@ -1,11 +1,9 @@
 import React from 'react';
 import { Element } from '../../types/template';
 
-interface ButtonElementProps {
-  element: Element;
-}
 
-const ButtonElement: React.FC<ButtonElementProps> = ({ element }) => {
+
+const ButtonElement = ({ element }: { element: Element }) => {
   const { content, style } = element;
   
   return (

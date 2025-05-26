@@ -1,8 +1,5 @@
 import React, { useState } from 'react';
-
-interface ElementToolbarProps {
-  onAddElement: (elementType: string) => void;
-}
+import { ElementToolbarProps } from '../types/template';
 
 const ElementToolbar: React.FC<ElementToolbarProps> = ({ onAddElement }) => {
   const [hoveredElement, setHoveredElement] = useState<string | null>(null);

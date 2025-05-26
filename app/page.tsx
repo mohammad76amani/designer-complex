@@ -1,52 +1,49 @@
 'use client';
-import React, { useState, useEffect } from 'react';
+
+import { useState, useEffect } from 'react';
 import DesignerRenderer from './components/DesignerRenderer';
-import { Template } from '@/app/types/template';
+import { Template } from './types/template';
 
-// Use require instead of import
-const jason = require('@/public/templates/homelg.json');
+export default function Home() {
+  const [template, setTemplate] = useState<Template | null>(null);
+  const [loading, setLoading] = useState(true);
 
-const Home: React.FC = () => {
-  const [template, setTemplate] = useState<Template | null>(jason);
-  const [loading, setLoading] = useState<boolean>(false);
-  const [error, setError] = useState<string | null>(null);
-  
-  // Rest of your component remains the same
-  
+  useEffect(() => {
+    const loadTemplate = async () => {
+      try {
+        const response = await fetch('/templates/homelg.json');
+        const templateData = await response.json();
+        setTemplate(templateData);
+      } catch (error) {
+        console.error('Error loading template:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadTemplate();
+  }, []);
+
+  const handleTemplateUpdate = (updatedTemplate: Template) => {
+    setTemplate(updatedTemplate);
+    // Here you could also save to localStorage, send to API, etc.
+    console.log('Template updated:', updatedTemplate);
+  };
+
   if (loading) {
-    return (
-      <div className="loading-container">
-        <div className="loading-spinner"></div>
-        <p>Loading template...</p>
-      </div>
-    );
+    return <div>Loading template...</div>;
   }
-  
-  if (error) {
-    return (
-      <div className="error-container">
-        <h2>Error Loading Template</h2>
-        <p>{error}</p>
-        <button onClick={() => window.location.reload()}>Try Again</button>
-      </div>
-    );
-  }
-  
-  if (!template) {
-    return (
-      <div className="error-container">
-        <h2>Failed to Load Template</h2>
-        <p>The template could not be loaded. Please check your configuration.</p>
-        <button onClick={() => window.location.reload()}>Try Again</button>
-      </div>
-    );
-  }
-  
-  return (
-    <div className="app-container">
-      <DesignerRenderer template={template} />
-    </div>
-  );
-};
 
-export default Home;
+  if (!template) {
+    return <div>Failed to load template</div>;
+  }
+
+  return (
+    <main>
+      <DesignerRenderer 
+        template={template} 
+        onTemplateUpdate={handleTemplateUpdate}
+      />
+    </main>
+  );
+}

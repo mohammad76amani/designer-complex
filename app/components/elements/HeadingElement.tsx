@@ -1,11 +1,8 @@
 import React from 'react';
 import { Element } from '../../types/template';
 
-interface HeadingElementProps {
-  element: Element;
-}
 
-const HeadingElement: React.FC<HeadingElementProps> = ({ element }) => {
+const HeadingElement = ({ element }:{element: Element;}) => {
   const { content, style } = element;
   
   return (

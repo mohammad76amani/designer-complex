@@ -4,22 +4,21 @@ import CanvasRenderer from './CanvasRenderer';
 import ContextMenu from './ContextMenu';
 import FloatingStyleEditor from './FloatingStyleEditor';
 import ElementToolbar from './ElementToolbar';
+import ResponsiveCanvasToolbar from './ResponsiveCanvasToolbar';
 import { DesignerRendererProps,DirectionSetting } from '@/app/types/template';
 import ElementManagementService from '../services/elementManagementService';
 import HistoryService from '../services/historyService';
 import ElementFactoryService from '../services/elementFactoryService';
 
-// Define a history state type
-interface HistoryState {
-  elements: Element[];
-  selectedElementId: string | null;
-}
 
-const DesignerRenderer: React.FC<DesignerRendererProps> = ({ template }) => {
+
+const DesignerRenderer: React.FC<DesignerRendererProps> = ({ template, onTemplateUpdate }) => {
   // Find the designer section in the template
   const designerSection = template?.sections?.children?.sections?.find(
     section => section.type === 'designer'
   );
+  
+  const [currentTemplate, setCurrentTemplate] = useState(template);
   const [selectedElementIds, setSelectedElementIds] = useState<string[]>([]);
   const [showStyleEditor, setShowStyleEditor] = useState<boolean>(false);
   const [selectedElement, setSelectedElement] = useState<Element | null>(null);
@@ -27,7 +26,8 @@ const DesignerRenderer: React.FC<DesignerRendererProps> = ({ template }) => {
     designerSection?.blocks?.elements || []
   );
   const [clipboard, setClipboard] = useState<Element | null>(null);
-    // Context menu state
+  
+  // Context menu state
   const [contextMenu, setContextMenu] = useState<{
     show: boolean;
     x: number;
@@ -39,9 +39,131 @@ const DesignerRenderer: React.FC<DesignerRendererProps> = ({ template }) => {
     y: 0,
     element: null
   });
+
+  // Update template when elements change
+  const updateTemplateElements = useCallback((updatedElements: Element[]) => {
+    if (!currentTemplate?.sections?.children?.sections || !onTemplateUpdate) return;
+    
+    const updatedTemplate = {
+      ...currentTemplate,
+      sections: {
+        ...currentTemplate.sections,
+        children: {
+          ...currentTemplate.sections.children,
+          sections: currentTemplate.sections.children.sections.map(section => 
+            section.type === 'designer' 
+              ? {
+                  ...section,
+                  blocks: {
+                    ...section.blocks,
+                    elements: updatedElements
+                  }
+                }
+              : section
+          )
+        }
+      }
+    };
+    
+    setCurrentTemplate(updatedTemplate);
+    onTemplateUpdate(updatedTemplate);
+  }, [currentTemplate, onTemplateUpdate]);
+
+  // Handle canvas height updates
+  const handleCanvasHeightUpdate = useCallback((newHeight: number) => {
+    if (!currentTemplate?.sections?.children?.sections || !onTemplateUpdate) return;
+    
+    const updatedTemplate = {
+      ...currentTemplate,
+      sections: {
+        ...currentTemplate.sections,
+        children: {
+          ...currentTemplate.sections.children,
+          sections: currentTemplate.sections.children.sections.map(section => 
+            section.type === 'designer' 
+              ? {
+                  ...section,
+                  blocks: {
+                    ...section.blocks,
+                    setting: section.blocks.setting ? {
+                      ...section.blocks.setting,
+                      canvasHeight: newHeight
+                    } : undefined,
+                    settings: section.blocks.settings ? {
+                      ...section.blocks.settings,
+                      canvasHeight: newHeight
+                    } : undefined
+                  }
+                }
+              : section
+          )
+        }
+      }
+    };
+    
+    setCurrentTemplate(updatedTemplate);
+    onTemplateUpdate(updatedTemplate);
+  }, [currentTemplate, onTemplateUpdate]);
+
+  // Handle breakpoint changes
+  const handleBreakpointChange = useCallback((breakpoint: 'sm' | 'lg') => {
+    if (!currentTemplate?.sections?.children?.sections || !onTemplateUpdate) return;
+    
+    const updatedTemplate = {
+      ...currentTemplate,
+      sections: {
+        ...currentTemplate.sections,
+        children: {
+          ...currentTemplate.sections.children,
+          sections: currentTemplate.sections.children.sections.map(section => 
+            section.type === 'designer' 
+              ? {
+                  ...section,
+                  blocks: {
+                    ...section.blocks,
+                    setting: section.blocks.setting ? {
+                      ...section.blocks.setting,
+                      canvasWidth: breakpoint
+                    } : undefined,
+                    settings: section.blocks.settings ? {
+                      ...section.blocks.settings,
+                      canvasWidth: breakpoint
+                    } : undefined
+                  }
+                }
+              : section
+          )
+        }
+      }
+    };
+    
+    setCurrentTemplate(updatedTemplate);
+    onTemplateUpdate(updatedTemplate);
+  }, [currentTemplate, onTemplateUpdate]);
+
+  // Get current breakpoint
+  const getCurrentBreakpoint = useCallback((): 'sm' | 'lg' => {
+    const settings = designerSection?.blocks?.setting || designerSection?.blocks?.settings;
+    return settings?.canvasWidth === 'sm' ? 'sm' : 'lg';
+  }, [designerSection]);
+
+  // Get breakpoints configuration
+  const getBreakpoints = useCallback(() => {
+    const settings = designerSection?.blocks?.setting || designerSection?.blocks?.settings;
+    return settings?.breakpoints || { sm: 400, lg: 1000 };
+  }, [designerSection]);
+
+  // Get canvas width based on current breakpoint
+  const getCanvasWidth = useCallback((): number => {
+    const breakpoints = getBreakpoints();
+    const currentBreakpoint = getCurrentBreakpoint();
+    return breakpoints[currentBreakpoint];
+  }, [getBreakpoints, getCurrentBreakpoint]);
+
   // History management
   const handleUpdateElements = (updatedElements: Element[]) => {
     setElements(updatedElements);
+    updateTemplateElements(updatedElements);
   };
   
   // Initialize history service - only run once
@@ -67,17 +189,11 @@ const DesignerRenderer: React.FC<DesignerRendererProps> = ({ template }) => {
 
   // Undo function
   const handleUndo = useCallback(() => {
-
-
-
-
     const previousState = HistoryService.undo();
     if (previousState) {
       setElements(previousState.elements);
       setSelectedElementIds(previousState.selectedElementIds);
-      
-
-
+      updateTemplateElements(previousState.elements);
 
       if (previousState.selectedElementId) {
         const selectedEl = previousState.elements.find(el => el.id === previousState.selectedElementId);
@@ -85,23 +201,16 @@ const DesignerRenderer: React.FC<DesignerRendererProps> = ({ template }) => {
       } else {
         setSelectedElement(null);
       }
-
-
     }
-
-
-  }, []);
+  }, [updateTemplateElements]);
 
   // Redo function
   const handleRedo = useCallback(() => {
-
-
-
     const nextState = HistoryService.redo();
     if (nextState) {
       setElements(nextState.elements);
       setSelectedElementIds(nextState.selectedElementIds);
-      
+      updateTemplateElements(nextState.elements);
 
       if (nextState.selectedElementId) {
         const selectedEl = nextState.elements.find(el => el.id === nextState.selectedElementId);
@@ -109,11 +218,8 @@ const DesignerRenderer: React.FC<DesignerRendererProps> = ({ template }) => {
       } else {
         setSelectedElement(null);
       }
-
-
     }
-
-  }, []);
+  }, [updateTemplateElements]);
 
   // Add keyboard shortcuts for undo/redo
   useEffect(() => {
@@ -154,8 +260,6 @@ const DesignerRenderer: React.FC<DesignerRendererProps> = ({ template }) => {
     setShowStyleEditor(true);
   };
 
-
-
   if (!designerSection) {
     return <div>No designer section found in template</div>;
   }
@@ -173,61 +277,60 @@ const DesignerRenderer: React.FC<DesignerRendererProps> = ({ template }) => {
   };
 
   // Function to handle element selection
+  const handleSelectElement = (element: Element | null, isMultiSelect: boolean = false) => {
+    if (!element) {
+      // If clicking on canvas, clear selection
+      setSelectedElement(null);
+      setSelectedElementIds([]);
+      return;
+    }
 
-const handleSelectElement = (element: Element | null, isMultiSelect: boolean = false) => {
-  if (!element) {
-    // If clicking on canvas, clear selection
-    setSelectedElement(null);
-    setSelectedElementIds([]);
-    return;
-  }
+    if (isMultiSelect) {
+      // In multi-select mode, toggle the element in the selection
+      setSelectedElementIds(prev => {
+        if (prev.includes(element.id)) {
+          // If already selected, remove it
+          const newIds = prev.filter(id => id !== element.id);
+          // Update the selected element to the last one in the array or null
+          setSelectedElement(newIds.length > 0 
+            ? elements.find(el => el.id === newIds[newIds.length - 1]) || null 
+            : null);
+          return newIds;
+        } else {
+          // If not selected, add it
+          const newIds = [...prev, element.id];
+          setSelectedElement(element);
+          return newIds;
+        }
+      });
+    } else {
+      // Single selection mode
+      setSelectedElement(element);
+      setSelectedElementIds([element.id]);
+    }
 
-  if (isMultiSelect) {
-    // In multi-select mode, toggle the element in the selection
-    setSelectedElementIds(prev => {
-      if (prev.includes(element.id)) {
-        // If already selected, remove it
-        const newIds = prev.filter(id => id !== element.id);
-        // Update the selected element to the last one in the array or null
-        setSelectedElement(newIds.length > 0 
-          ? elements.find(el => el.id === newIds[newIds.length - 1]) || null 
-          : null);
-        return newIds;
-      } else {
-        // If not selected, add it
-        const newIds = [...prev, element.id];
-        setSelectedElement(element);
-        return newIds;
-      }
-    });
-  } else {
-    // Single selection mode
-    setSelectedElement(element);
-    setSelectedElementIds([element.id]);
-  }
-
-  // Close context menu when selecting a new element
-  setContextMenu({ ...contextMenu, show: false });
-};
-
+    // Close context menu when selecting a new element
+    setContextMenu({ ...contextMenu, show: false });
+  };
 
   // Function to update element position and size
-const handleUpdateElement = (updatedElement: Element) => {
-  console.log(`Updating element ID: ${updatedElement.id}`, updatedElement);
-  
-  const updatedElements = elements.map(el =>
-    el.id === updatedElement.id ? updatedElement : el
-  );
-  
-  // Don't create checkpoint for every small update (like dragging)
-  // The useEffect will handle adding to history
-  setElements(updatedElements);
+  const handleUpdateElement = (updatedElement: Element) => {
+    console.log(`Updating element ID: ${updatedElement.id}`, updatedElement);
+    
+    const updatedElements = elements.map(el =>
+      el.id === updatedElement.id ? updatedElement : el
+    );
+    
+    // Don't create checkpoint for every small update (like dragging)
+    // The useEffect will handle adding to history
+    setElements(updatedElements);
+    updateTemplateElements(updatedElements);
 
-  // Update the selected element reference as well
-  if (selectedElement && selectedElement.id === updatedElement.id) {
-    setSelectedElement(updatedElement);
-  }
-};
+    // Update the selected element reference as well
+    if (selectedElement && selectedElement.id === updatedElement.id) {
+      setSelectedElement(updatedElement);
+    }
+  };
 
   // Function to handle context menu
   const handleElementContextMenu = (element: Element, x: number, y: number) => {
@@ -258,148 +361,151 @@ const handleUpdateElement = (updatedElement: Element) => {
 
   // Function to delete the element from context menu
   const deleteElement = () => {
-  if (contextMenu.element) {
-    // Create checkpoint before deletion
-    HistoryService.createCheckpoint(
-      elements, 
-      selectedElementIds, 
-      selectedElement?.id || null,
-      `Delete ${contextMenu.element.type} element`
-    );
-    
-    const updatedElements = ElementManagementService.deleteElement(
-      elements, 
-      contextMenu.element.id
-    );
-    setElements(updatedElements);
-    
-    if (selectedElement && selectedElement.id === contextMenu.element.id) {
-      setSelectedElement(null);
-      setShowStyleEditor(false);
+    if (contextMenu.element) {
+      // Create checkpoint before deletion
+      HistoryService.createCheckpoint(
+        elements, 
+        selectedElementIds, 
+        selectedElement?.id || null,
+        `Delete ${contextMenu.element.type} element`
+      );
+      
+      const updatedElements = ElementManagementService.deleteElement(
+        elements, 
+        contextMenu.element.id
+      );
+      setElements(updatedElements);
+      updateTemplateElements(updatedElements);
+      
+      if (selectedElement && selectedElement.id === contextMenu.element.id) {
+        setSelectedElement(null);
+        setShowStyleEditor(false);
+      }
+      closeContextMenu();
     }
-    closeContextMenu();
-  }
-};
+  };
 
   const canvasRef = useRef<HTMLDivElement>(null) as React.RefObject<HTMLDivElement>;
 
   // Function to copy the element from context menu
   const copyElement = () => {
-  if (contextMenu.element) {
-    setClipboard(contextMenu.element);
-    closeContextMenu();
-  }
-};
+    if (contextMenu.element) {
+      setClipboard(contextMenu.element);
+      closeContextMenu();
+    }
+  };
 
   // Function to cut the element from context menu
   const cutElement = () => {
-  if (contextMenu.element) {
-    setClipboard(contextMenu.element);
-    const updatedElements = ElementManagementService.deleteElement(
-      elements, 
-      contextMenu.element.id
-    );
-    setElements(updatedElements);
-    
-    if (selectedElement && selectedElement.id === contextMenu.element.id) {
-      setSelectedElement(null);
+    if (contextMenu.element) {
+      setClipboard(contextMenu.element);
+      const updatedElements = ElementManagementService.deleteElement(
+        elements, 
+        contextMenu.element.id
+      );
+      setElements(updatedElements);
+      updateTemplateElements(updatedElements);
+      
+      if (selectedElement && selectedElement.id === contextMenu.element.id) {
+        setSelectedElement(null);
+      }
+      closeContextMenu();
     }
-    closeContextMenu();
-  }
-};
+  };
 
   // Function to paste the copied/cut element
-const pasteElement = () => {
-  if (clipboard && canvasRef.current) {
-    // Get canvas position for coordinate adjustment
-    const canvasRect = canvasRef.current.getBoundingClientRect();
-    
-    // Calculate the position relative to the canvas
-    const canvasX = contextMenu.x - canvasRect.left;
-    const canvasY = contextMenu.y - canvasRect.top;
-    
-    // Use factory service to create from clipboard
-    const newElement = ElementFactoryService.createFromClipboard(
-      clipboard,
-      { 
-        x: Math.max(0, canvasX - (clipboard.style.width as number) / 2),
-        y: Math.max(0, canvasY - (clipboard.style.height as number) / 2)
-      }
-    );
-    
-    // Validate element fits in canvas
-    const canvasBounds = {
-      width: canvasRef.current.clientWidth,
-      height: canvasRef.current.clientHeight
-    };
-    
-    const validatedElement = ElementFactoryService.createValidatedElement(
-      newElement.type,
-      { x: newElement.style.x, y: newElement.style.y },
-      newElement.style.zIndex || elements.length + 1,
-      canvasBounds,
-      newElement
-    );
-    
-    // Create checkpoint for history
-    const newElements = [...elements, validatedElement];
-    HistoryService.createCheckpoint(
-      newElements, 
-      [validatedElement.id], 
-      validatedElement.id,
-      `Paste ${clipboard.type} element`
-    );
-    
-    // Add the new element to the canvas
-    setElements(newElements);
-    
-    // Select the new element
-    setSelectedElement(validatedElement);
-    setSelectedElementIds([validatedElement.id]);
-    
-    // Close the context menu
-    closeContextMenu();
-  }
-};
+  const pasteElement = () => {
+    if (clipboard && canvasRef.current) {
+      // Get canvas position for coordinate adjustment
+      const canvasRect = canvasRef.current.getBoundingClientRect();
+      
+      // Calculate the position relative to the canvas
+      const canvasX = contextMenu.x - canvasRect.left;
+      const canvasY = contextMenu.y - canvasRect.top;
+      
+      // Use factory service to create from clipboard
+      const newElement = ElementFactoryService.createFromClipboard(
+        clipboard,
+        { 
+          x: Math.max(0, canvasX - (clipboard.style.width as number) / 2),
+          y: Math.max(0, canvasY - (clipboard.style.height as number) / 2)
+        }
+      );
+      
+      // Validate element fits in canvas
+      const canvasBounds = {
+        width: canvasRef.current.clientWidth,
+        height: canvasRef.current.clientHeight
+      };
+      
+      const validatedElement = ElementFactoryService.createValidatedElement(
+        newElement.type,
+        { x: newElement.style.x, y: newElement.style.y },
+        newElement.style.zIndex || elements.length + 1,
+        canvasBounds,
+        newElement
+      );
+      
+      // Create checkpoint for history
+      const newElements = [...elements, validatedElement];
+      HistoryService.createCheckpoint(
+        newElements, 
+        [validatedElement.id], 
+        validatedElement.id,
+        `Paste ${clipboard.type} element`
+      );
+      
+      // Add the new element to the canvas
+      setElements(newElements);
+      updateTemplateElements(newElements);
+      
+      // Select the new element
+      setSelectedElement(validatedElement);
+      setSelectedElementIds([validatedElement.id]);
+      
+      // Close the context menu
+      closeContextMenu();
+    }
+  };
 
-  
   // Function to handle the "Group" 
-const createGroup = () => {
-  // Only create a group if multiple elements are selected
-  if (selectedElementIds.length <= 1) {
-    console.log("Need at least 2 elements to create a group");
-    return;
-  }
-  
-  console.log("Creating group with elements:", selectedElementIds);
-  
-  // Get the selected elements
-  const selectedElements = elements.filter(el => selectedElementIds.includes(el.id));
-  
-  // Create checkpoint before grouping
-  HistoryService.createCheckpoint(
-    elements, 
-    selectedElementIds, 
-    selectedElement?.id || null,
-    `Group ${selectedElementIds.length} elements`
-  );
-  
-  // Use factory service to create group
-  const { group, updatedElements } = ElementFactoryService.createGroupFromElements(selectedElements);
-  
-  // Update the elements array: remove selected elements and add updated ones + group
-  const remainingElements = elements.filter(el => !selectedElementIds.includes(el.id));
-  const finalElements = [...remainingElements, ...updatedElements, group];
-  
-  // Update state
-  setElements(finalElements);
-  
-  // Select only the group
-  setSelectedElementIds([group.id]);
-  setSelectedElement(group);
-  
-  console.log("Group created:", group);
-};
+  const createGroup = () => {
+    // Only create a group if multiple elements are selected
+    if (selectedElementIds.length <= 1) {
+      console.log("Need at least 2 elements to create a group");
+      return;
+    }
+    
+    console.log("Creating group with elements:", selectedElementIds);
+    
+    // Get the selected elements
+    const selectedElements = elements.filter(el => selectedElementIds.includes(el.id));
+    
+    // Create checkpoint before grouping
+    HistoryService.createCheckpoint(
+      elements, 
+      selectedElementIds, 
+      selectedElement?.id || null,
+      `Group ${selectedElementIds.length} elements`
+    );
+    
+    // Use factory service to create group
+    const { group, updatedElements } = ElementFactoryService.createGroupFromElements(selectedElements);
+    
+    // Update the elements array: remove selected elements and add updated ones + group
+    const remainingElements = elements.filter(el => !selectedElementIds.includes(el.id));
+    const finalElements = [...remainingElements, ...updatedElements, group];
+    
+    // Update state
+    setElements(finalElements);
+    updateTemplateElements(finalElements);
+    
+    // Select only the group
+    setSelectedElementIds([group.id]);
+    setSelectedElement(group);
+    
+    console.log("Group created:", group);
+  };
 
   // Add keyboard shortcuts for copy, cut, paste
   useEffect(() => {
@@ -415,6 +521,7 @@ const createGroup = () => {
         e.preventDefault();
         const filteredElements = elements.filter(el => el.id !== selectedElement.id);
         setElements(filteredElements);
+        updateTemplateElements(filteredElements);
         setSelectedElement(null);
       }
 
@@ -430,6 +537,7 @@ const createGroup = () => {
         setClipboard(selectedElement);
         const filteredElements = elements.filter(el => el.id !== selectedElement.id);
         setElements(filteredElements);
+        updateTemplateElements(filteredElements);
         setSelectedElement(null);
       }
 
@@ -466,6 +574,7 @@ const createGroup = () => {
         // Add the new element to the canvas
         const newElements = [...elements, validatedElement];
         setElements(newElements);
+        updateTemplateElements(newElements);
         
         // Select the new element
         setSelectedElement(validatedElement);
@@ -489,58 +598,56 @@ const createGroup = () => {
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [selectedElement, elements, clipboard, selectedElementIds]);
+  }, [selectedElement, elements, clipboard, selectedElementIds, updateTemplateElements]);
   
   // Add a new element to the canvas
- // Replace handleAddElement with smart positioning
-
-const handleAddElement = (elementType: string) => {
-  // Get canvas dimensions
-  const canvasWidth = canvasRef.current?.clientWidth || 800;
-  const canvasHeight = canvasRef.current?.clientHeight || 600;
-  
-  // Calculate center position
-  const centerX = canvasWidth / 2 - 100;
-  const centerY = canvasHeight / 2 - 50;
-  
-  // Get canvas bounds for validation
-  const canvasBounds = { width: canvasWidth, height: canvasHeight };
-  
-  // Create element using factory service with smart positioning
-  const newElement = ElementFactoryService.createElementWithSmartPositioning(
-    elementType,
-    { x: centerX, y: centerY },
-    elements,
-    elements.length + 1,
-    10 // max attempts to find non-overlapping position
-  );
-  
-  // Validate element fits in canvas
-  const validatedElement = ElementFactoryService.createValidatedElement(
-    newElement.type,
-    { x: newElement.style.x, y: newElement.style.y },
-    newElement.style.zIndex || elements.length + 1,
-    canvasBounds,
-    newElement
-  );
-  
-  // Create checkpoint for history
-  const newElements = [...elements, validatedElement];
-  HistoryService.createCheckpoint(
-    newElements, 
-    [validatedElement.id], 
-    validatedElement.id,
-    `Add ${elementType} element`
-  );
-  
-  // Add the new element to the canvas
-  setElements(newElements);
-  
-  // Select the new element
-  setSelectedElement(validatedElement);
-  setSelectedElementIds([validatedElement.id]);
-};
-
+  const handleAddElement = (elementType: string) => {
+    // Get canvas dimensions
+    const canvasWidth = getCanvasWidth();
+    const canvasHeight = parseFloat(String(designerSection?.blocks?.setting?.canvasHeight || designerSection?.blocks?.settings?.canvasHeight || 600));
+    
+    // Calculate center position
+    const centerX = canvasWidth / 2 - 100;
+    const centerY = canvasHeight / 2 - 50;
+    
+    // Get canvas bounds for validation
+    const canvasBounds = { width: canvasWidth, height: canvasHeight };
+    
+    // Create element using factory service with smart positioning
+    const newElement = ElementFactoryService.createElementWithSmartPositioning(
+      elementType,
+      { x: centerX, y: centerY },
+      elements,
+      elements.length + 1,
+      10 // max attempts to find non-overlapping position
+    );
+    
+    // Validate element fits in canvas
+    const validatedElement = ElementFactoryService.createValidatedElement(
+      newElement.type,
+      { x: newElement.style.x, y: newElement.style.y },
+      newElement.style.zIndex || elements.length + 1,
+      canvasBounds,
+      newElement
+    );
+    
+    // Create checkpoint for history
+    const newElements = [...elements, validatedElement];
+    HistoryService.createCheckpoint(
+      newElements, 
+      [validatedElement.id], 
+      validatedElement.id,
+      `Add ${elementType} element`
+    );
+    
+    // Add the new element to the canvas
+    setElements(newElements);
+    updateTemplateElements(newElements);
+    
+    // Select the new element
+    setSelectedElement(validatedElement);
+    setSelectedElementIds([validatedElement.id]);
+  };
 
   // Add this useEffect to ensure showStyleEditor is false when no element is selected
   useEffect(() => {
@@ -570,75 +677,80 @@ const handleAddElement = (elementType: string) => {
     );
   };
 
-
-
-return (
-  <div className="designer-container" style={sectionStyle}>
-    <div style={{ position: 'relative' }}>
-      <div style={{
-        padding: '10px',
-        backgroundColor: '#f0f0f0',
-        borderRadius: '8px 8px 0 0',
-        borderBottom: '1px solid #ddd',
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center'
-      }}>
-        <div>
-          <h3 style={{ margin: 0 }}>Canvas Editor</h3>
-        </div>
-        <div style={{ fontSize: '14px', color: '#666', display: 'flex', gap: '10px' }}>
-          {/* Undo/Redo buttons */}
-          <button
-            onClick={handleUndo}
-            disabled={!HistoryService.canUndo()}
-            style={{
-              padding: '5px 10px',
-              backgroundColor: HistoryService.canUndo() ? '#6c757d' : '#e9ecef',
-              color: HistoryService.canUndo() ? 'white' : '#6c757d',
-              border: 'none',
-              borderRadius: '4px',
-              cursor: HistoryService.canUndo() ? 'pointer' : 'not-allowed'
-            }}
-            title={HistoryService.getUndoDescription() || 'Nothing to undo'}
-          >
-            ↶ Undo
-          </button>
-          
-          <button
-            onClick={handleRedo}
-            disabled={!HistoryService.canRedo()}
-            style={{
-              padding: '5px 10px',
-              backgroundColor: HistoryService.canRedo() ? '#6c757d' : '#e9ecef',
-              color: HistoryService.canRedo() ? 'white' : '#6c757d',
-              border: 'none',
-              borderRadius: '4px',
-              cursor: HistoryService.canRedo() ? 'pointer' : 'not-allowed'
-            }}
-            title={HistoryService.getRedoDescription() || 'Nothing to redo'}
-          >
-            ↷ Redo
-          </button>
-
-          {/* Existing buttons */}
-          {selectedElementIds.length > 1 && (
-            <button onClick={createGroup}>
-              Group Elements ({selectedElementIds.length})
+  return (
+    <div className="designer-container" style={sectionStyle}>
+      <div style={{ position: 'relative' }}>
+        <div style={{
+          padding: '10px',
+          backgroundColor: '#f0f0f0',
+          borderRadius: '8px 8px 0 0',
+          borderBottom: '1px solid #ddd',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center'
+        }}>
+          <div>
+            <h3 style={{ margin: 0 }}>Canvas Editor</h3>
+          </div>
+          <div style={{ fontSize: '14px', color: '#666', display: 'flex', gap: '10px' }}>
+            {/* Undo/Redo buttons */}
+            <button
+              onClick={handleUndo}
+              disabled={!HistoryService.canUndo()}
+              style={{
+                padding: '5px 10px',
+                backgroundColor: HistoryService.canUndo() ? '#6c757d' : '#e9ecef',
+                color: HistoryService.canUndo() ? 'white' : '#6c757d',
+                border: 'none',
+                borderRadius: '4px',
+                cursor: HistoryService.canUndo() ? 'pointer' : 'not-allowed'
+              }}
+              title={HistoryService.getUndoDescription() || 'Nothing to undo'}
+            >
+              ↶ Undo
             </button>
-          )}
-          
-          {/* History info for debugging */}
-          {process.env.NODE_ENV === 'development' && (
-            <span style={{ fontSize: '11px', color: '#999' }}>
-              History: {HistoryService.getCurrentIndex() + 1}/{HistoryService.getHistoryLength()}
-            </span>
-          )}
+            
+            <button
+              onClick={handleRedo}
+              disabled={!HistoryService.canRedo()}
+              style={{
+                padding: '5px 10px',
+                backgroundColor: HistoryService.canRedo() ? '#6c757d' : '#e9ecef',
+                color: HistoryService.canRedo() ? 'white' : '#6c757d',
+                border: 'none',
+                borderRadius: '4px',
+                cursor: HistoryService.canRedo() ? 'pointer' : 'not-allowed'
+              }}
+              title={HistoryService.getRedoDescription() || 'Nothing to redo'}
+            >
+              ↷ Redo
+            </button>
+
+            {/* Existing buttons */}
+            {selectedElementIds.length > 1 && (
+              <button onClick={createGroup}>
+                Group Elements ({selectedElementIds.length})
+              </button>
+            )}
+            
+            {/* History info for debugging */}
+            {process.env.NODE_ENV === 'development' && (
+              <span style={{ fontSize: '11px', color: '#999' }}>
+                History: {HistoryService.getCurrentIndex() + 1}/{HistoryService.getHistoryLength()}
+              </span>
+            )}
+          </div>
         </div>
-      </div>
 
         <div style={{ position: 'relative' }}>
           <ElementToolbar onAddElement={handleAddElement} />
+          
+          {/* Add Responsive Canvas Toolbar */}
+          <ResponsiveCanvasToolbar 
+            currentBreakpoint={getCurrentBreakpoint()}
+            onBreakpointChange={handleBreakpointChange}
+            breakpoints={getBreakpoints()}
+          />
           
           <CanvasRenderer 
             blocks={{ 
@@ -655,6 +767,7 @@ return (
             onCloseContextMenu={closeContextMenu}
             canvasRef={canvasRef}
             onOpenStyleEditor={handleOpenStyleEditor}
+            onCanvasHeightUpdate={handleCanvasHeightUpdate}
           />
 
           {/* Render context menu when shown */}
@@ -686,4 +799,3 @@ return (
 };
 
 export default DesignerRenderer;
-

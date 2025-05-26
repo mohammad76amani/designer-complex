@@ -1,11 +1,8 @@
 import React from 'react';
 import { Element } from '../../types/template';
 
-interface ParagraphElementProps {
-  element: Element;
-}
 
-const ParagraphElement: React.FC<ParagraphElementProps> = ({ element }) => {
+const ParagraphElement= ({ element }:{element: Element}) => {
   const { content, style } = element;
   
   return (
