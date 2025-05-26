@@ -111,7 +111,7 @@ export class ElementFactoryService {
       id,
       type: 'button',
       content: 'Click Me',
-      href: '#',
+      href: '',
       style: {
         x: position.x,
         y: position.y,
@@ -408,7 +408,7 @@ export class ElementFactoryService {
       case 'button':
         return {
           content: 'Click Me',
-          href: '#',
+          href: '',
           style: {
             fontSize: 16,
             fontWeight: 'normal',
@@ -1033,11 +1033,7 @@ export class ElementFactoryService {
         duration: 1000,
         delay: 0
       },
-      click: {
-        type: 'none',
-        duration: 0,
-        delay: 0
-      }
+      click: "none" as "none" | "bounce" | "bg-color" | "text-color" | "scale-down" | "pulse"
     };
     
     return this.createElement(elementType, position, zIndex, {

@@ -47,6 +47,11 @@ export interface Template {
   order?: string[];
 }
 
+export interface CanvasInfo {
+  id: string;
+  name: string;
+  template: Template;
+}
 /**
  * Section component that can contain blocks or nested sections
  */
@@ -303,6 +308,8 @@ export interface CanvasRendererProps {
  */
 export interface DesignerRendererProps {
   template: Template;
+  canvasId?: string;
+  onTemplateUpdate?: (updatedTemplate: Template) => void;
 }
 
 /**

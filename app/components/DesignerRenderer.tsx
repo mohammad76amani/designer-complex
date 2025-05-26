@@ -324,8 +324,7 @@ const pasteElement = () => {
       { 
         x: Math.max(0, canvasX - (clipboard.style.width as number) / 2),
         y: Math.max(0, canvasY - (clipboard.style.height as number) / 2)
-      },
-      elements.length + 1
+      }
     );
     
     // Validate element fits in canvas

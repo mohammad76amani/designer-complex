@@ -5,8 +5,6 @@ export const hoverAnimationOptions = [
   { value: 'none', label: 'None' },
   { value: 'bg-color', label: 'Background Color' },
   { value: 'text-color', label: 'Text Color' },
-  { value: 'scale-up', label: 'Scale Up' },
-  { value: 'scale-down', label: 'Scale Down' },
   { value: 'shadow', label: 'Add Shadow' },
   { value: 'border', label: 'Add Border' }
 ];
@@ -15,7 +13,6 @@ export const clickAnimationOptions = [
   { value: 'none', label: 'None' },
   { value: 'bg-color', label: 'Background Color' },
   { value: 'text-color', label: 'Text Color' },
-  { value: 'scale-down', label: 'Scale Down' },
   { value: 'bounce', label: 'Bounce' },
   { value: 'pulse', label: 'Pulse' }
 ];

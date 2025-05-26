@@ -59,16 +59,7 @@ const HistoryPanel: React.FC = () => {
               cursor: 'pointer',
               fontSize: '12px'
             }}
-            onClick={() => {
-              const newState = HistoryService.goToState(index);
-              if (newState) {
-                // You'd need to pass these as props or use context
-                // setElements(newState.elements);
-                // setSelectedElementIds(newState.selectedElementIds);
-                // setSelectedElement(newState.selectedElementId ? 
-                //   newState.elements.find(el => el.id === newState.selectedElementId) : null);
-              }
-            }}
+           
           >
             <div style={{ fontWeight: state.isCurrent ? 'bold' : 'normal' }}>
               {state.description}
