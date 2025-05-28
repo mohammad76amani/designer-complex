@@ -1,559 +1,134 @@
 import { Element } from '../types/template';
 
-/**
- * Element factory service for creating different types of elements
- */
 export class ElementFactoryService {
-  
   /**
-   * Create a new element of specified type
+   * Create a new element with default properties
    */
   static createElement(
     elementType: string,
     position: { x: number; y: number },
-    zIndex: number,
-    customProps?: Partial<Element>
+    existingElementsCount: number = 0
   ): Element {
-    const baseId = `${elementType}-${Date.now()}`;
+    console.log('ElementFactoryService: Creating element', { elementType, position, existingElementsCount });
     
-    switch (elementType) {
-      case 'heading':
-        return this.createHeadingElement(baseId, position, zIndex, customProps);
-      case 'paragraph':
-        return this.createParagraphElement(baseId, position, zIndex, customProps);
-      case 'button':
-        return this.createButtonElement(baseId, position, zIndex, customProps);
-      case 'image':
-        return this.createImageElement(baseId, position, zIndex, customProps);
-      case 'video':
-        return this.createVideoElement(baseId, position, zIndex, customProps);
-      case 'shape':
-        return this.createShapeElement(baseId, position, zIndex, customProps);
-      case 'group':
-        return this.createGroupElement(baseId, position, zIndex, customProps);
-      default:
-        return this.createGenericElement(baseId, elementType, position, zIndex, customProps);
-    }
-  }
-
-  /**
-   * Create a heading element
-   */
-  static createHeadingElement(
-    id: string,
-    position: { x: number; y: number },
-    zIndex: number,
-    customProps?: Partial<Element>
-  ): Element {
-    return {
-      id,
-      type: 'heading',
-      content: 'New Heading',
+    const baseElement = {
       style: {
         x: position.x,
         y: position.y,
-        width: 200,
-        height: 50,
-        fontSize: 24,
-        fontWeight: 'bold',
+        fontSize: 16,
+        fontWeight: 'normal' as const,
         color: '#000000',
         backgroundColor: 'transparent',
         borderRadius: 0,
         padding: 0,
-        textAlign: 'left',
-        zIndex
-      },
-      ...customProps
-    };
-  }
-
-  /**
-   * Create a paragraph element
-   */
-  static createParagraphElement(
-    id: string,
-    position: { x: number; y: number },
-    zIndex: number,
-    customProps?: Partial<Element>
-  ): Element {
-    return {
-      id,
-      type: 'paragraph',
-      content: 'New paragraph text. Double-click to edit.',
-      style: {
-        x: position.x,
-        y: position.y,
-        width: 300,
-        height: 100,
-        fontSize: 16,
-        fontWeight: 'normal',
-        color: '#000000',
-        backgroundColor: 'transparent',
-        borderRadius: 0,
-        padding: 0,
-        textAlign: 'left',
-        zIndex
-      },
-      ...customProps
-    };
-  }
-
-  /**
-   * Create a button element
-   */
-  static createButtonElement(
-    id: string,
-    position: { x: number; y: number },
-    zIndex: number,
-    customProps?: Partial<Element>
-  ): Element {
-    return {
-      id,
-      type: 'button',
-      content: 'Click Me',
-      href: '',
-      style: {
-        x: position.x,
-        y: position.y,
-        width: 120,
-        height: 40,
-        fontSize: 16,
-        fontWeight: 'bold',
-        color: '#ffffff',
-        backgroundColor: '#3498db',
-        borderRadius: 4,
-        padding: 0,
-        textAlign: 'center',
-        zIndex
-      },
-      ...customProps
-    };
-  }
-
-  /**
-   * Create an image element
-   */
-  static createImageElement(
-    id: string,
-    position: { x: number; y: number },
-    zIndex: number,
-    customProps?: Partial<Element>
-  ): Element {
-    return {
-      id,
-      type: 'image',
-      content: '',
-      src: 'https://via.placeholder.com/300x200',
-      alt: 'Placeholder image',
-      style: {
-        x: position.x,
-        y: position.y,
-        width: 300,
-        height: 200,
-        fontSize: 16,
-        fontWeight: 'normal',
-        color: '#000000',
-        backgroundColor: '#f0f0f0',
-        borderRadius: 0,
-        padding: 0,
-        textAlign: 'center',
-        zIndex,
-        objectFit: 'cover'
-      },
-      ...customProps
-    };
-  }
-
-  /**
-   * Create a video element
-   */
-  static createVideoElement(
-    id: string,
-    position: { x: number; y: number },
-    zIndex: number,
-    customProps?: Partial<Element>
-  ): Element {
-    return {
-      id,
-      type: 'video',
-      content: '',
-      videoSrc: 'https://www.w3schools.com/html/mov_bbb.mp4',
-      controls: true,
-      autoplay: false,
-      loop: false,
-      muted: false,
-      style: {
-        x: position.x,
-        y: position.y,
-        width: 320,
-        height: 240,
-        fontSize: 16,
-        fontWeight: 'normal',
-        color: '#000000',
-        backgroundColor: '#000000',
-        borderRadius: 0,
-        padding: 0,
-        textAlign: 'center',
-        zIndex,
-        objectFit: 'contain'
-      },
-      ...customProps
-    };
-  }
-
-  /**
-   * Create a shape element
-   */
-  static createShapeElement(
-    id: string,
-    position: { x: number; y: number },
-    zIndex: number,
-    customProps?: Partial<Element>
-  ): Element {
-    return {
-      id,
-      type: 'shape',
-      content: '',
-      shapeType: 'rectangle',
-      style: {
-        x: position.x,
-        y: position.y,
-        width: 150,
-        height: 150,
-        fontSize: 16,
-        fontWeight: 'normal',
-        color: '#000000',
-        backgroundColor: '#e74c3c',
-        borderRadius: 0,
-        padding: 0,
-        textAlign: 'center',
-        zIndex,
-        borderWidth: 0,
-        borderStyle: 'none',
-        borderColor: '#000000'
-      },
-      ...customProps
-    };
-  }
-
-  /**
-   * Create a group element
-   */
-  static createGroupElement(
-    id: string,
-    position: { x: number; y: number },
-    zIndex: number,
-    customProps?: Partial<Element>
-  ): Element {
-    return {
-      id,
-      type: 'group',
-      content: '',
-      childIds: [],
-      style: {
-        x: position.x,
-        y: position.y,
-        width: 200,
-        height: 200,
-        fontSize: 16,
-        fontWeight: 'normal',
-        color: '#000000',
-        backgroundColor: 'transparent',
-        borderRadius: 0,
-        padding: 0,
-        textAlign: 'left',
-        zIndex
-      },
-      ...customProps
-    };
-  }
-
-  /**
-   * Create a generic element for unknown types
-   */
-  static createGenericElement(
-    id: string,
-    elementType: string,
-    position: { x: number; y: number },
-    zIndex: number,
-    customProps?: Partial<Element>
-  ): Element {
-    return {
-      id,
-      type: elementType,
-      content: `New ${elementType} element`,
-      style: {
-        x: position.x,
-        y: position.y,
-        width: 200,
-        height: 100,
-        fontSize: 16,
-        fontWeight: 'normal',
-        color: '#000000',
-        backgroundColor: 'transparent',
-        borderRadius: 0,
-        padding: 0,
-        textAlign: 'left',
-        zIndex
-      },
-      ...customProps
-    };
-  }
-
-  /**
-   * Clone an existing element with new position and ID
-   */
-  static cloneElement(
-    originalElement: Element,
-    newPosition?: { x: number; y: number },
-    idSuffix?: string
-  ): Element {
-    const suffix = idSuffix || `copy-${Date.now()}`;
-    const newId = `${originalElement.id}-${suffix}`;
-    
-    const clonedElement: Element = {
-      ...originalElement,
-      id: newId,
-      style: {
-        ...originalElement.style,
-        x: newPosition ? newPosition.x : originalElement.style.x + 20,
-        y: newPosition ? newPosition.y : originalElement.style.y + 20
+        textAlign: 'left' as const,
+        zIndex: existingElementsCount + 1
       }
     };
 
-    // Remove parent reference for cloned elements
-    if (clonedElement.parentId) {
-      delete clonedElement.parentId;
-    }
-
-    return clonedElement;
-  }
-
-  /**
-   * Create element from template
-   */
-  static createFromTemplate(
-    template: Partial<Element>,
-    position: { x: number; y: number },
-    zIndex: number
-  ): Element {
-    const id = `${template.type || 'element'}-${Date.now()}`;
-    
-    return {
-      id,
-      type: template.type || 'generic',
-      content: template.content || '',
-      style: {
-        x: position.x,
-        y: position.y,
-        width: 200,
-        height: 100,
-        fontSize: 16,
-        fontWeight: 'normal',
-        color: '#000000',
-        backgroundColor: 'transparent',
-        borderRadius: 0,
-        padding: 0,
-        textAlign: 'left',
-        zIndex,
-        ...template.style
-      },
-      ...template
-    };
-  }
-
-  /**
-   * Get default properties for element type
-   */
-  static getDefaultProperties(elementType: string): Partial<Element> {
     switch (elementType) {
       case 'heading':
         return {
+          id: `heading-${Date.now()}`,
+          type: 'heading',
           content: 'New Heading',
+          ...baseElement,
           style: {
-            fontSize: 24,
-            fontWeight: 'bold',
+            ...baseElement.style,
             width: 200,
             height: 50,
-            x: 0,
-            y: 0,
-            color: '#000000',
-            backgroundColor: 'transparent',
-            borderRadius: 0,
-            padding: 0,
-            textAlign: 'left',
-            zIndex: 1
+            fontSize: 24,
+            fontWeight: 'bold'
           }
         };
-      
+
       case 'paragraph':
         return {
+          id: `paragraph-${Date.now()}`,
+          type: 'paragraph',
           content: 'New paragraph text. Double-click to edit.',
+          ...baseElement,
           style: {
-            fontSize: 16,
-            fontWeight: 'normal',
+            ...baseElement.style,
             width: 300,
-            height: 100,
-            x: 0,
-            y: 0,
-            color: '#000000',
-            backgroundColor: 'transparent',
-            borderRadius: 0,
-            padding: 0,
-            textAlign: 'left',
-            zIndex: 1
+            height: 100
           }
         };
-      
+
       case 'button':
         return {
+          id: `button-${Date.now()}`,
+          type: 'button',
           content: 'Click Me',
           href: '',
+          ...baseElement,
           style: {
-            fontSize: 16,
-            fontWeight: 'normal',
-            width: 300,
-            height: 100,
-            x: 0,
-            y: 0,
-            color: '#000000',
-            backgroundColor: 'transparent',
-            borderRadius: 0,
-            padding: 0,
-            textAlign: 'left',
-            zIndex: 1
+            ...baseElement.style,
+            width: 120,
+            height: 40,
+            fontWeight: 'bold',
+            color: '#ffffff',
+            backgroundColor: '#3498db',
+            borderRadius: 4,
+            textAlign: 'center'
           }
         };
-      
+
       case 'image':
         return {
+          id: `image-${Date.now()}`,
+          type: 'image',
+          content: '',
           src: 'https://via.placeholder.com/300x200',
           alt: 'Placeholder image',
+          ...baseElement,
           style: {
-            fontSize: 16,
-            fontWeight: 'normal',
+            ...baseElement.style,
             width: 300,
-            height: 100,
-            x: 0,
-            y: 0,
-            color: '#000000',
-            backgroundColor: 'transparent',
-            borderRadius: 0,
-            padding: 0,
-            textAlign: 'left',
-            zIndex: 1
+            height: 200
           }
         };
-      
+
       case 'video':
         return {
+          id: `video-${Date.now()}`,
+          type: 'video',
+          content: '',
           videoSrc: 'https://www.w3schools.com/html/mov_bbb.mp4',
           controls: true,
           autoplay: false,
           loop: false,
           muted: false,
+          ...baseElement,
           style: {
-            width: 320,
-            height: 240,
-            backgroundColor: '#000000',
-            objectFit: 'contain',
-            fontWeight: 'normal',
-            fontSize: 16,
-            x: 0,
-            y: 0,
-            color: '#000000',
-            borderRadius: 0,
-            padding: 0,
-            textAlign: 'left',
-            zIndex: 1
+            ...baseElement.style,
+            width: 400,
+            height: 225
           }
         };
-      
+
       case 'shape':
         return {
+          id: `shape-${Date.now()}`,
+          type: 'shape',
+          content: '',
           shapeType: 'rectangle',
+          ...baseElement,
           style: {
-            width: 150,
-            height: 150,
-            backgroundColor: '#e74c3c',
-            borderWidth: 0,
-            borderStyle: 'none',
-            borderColor: '#000000',
-            fontSize: 16,
-            fontWeight: 'normal',
-
-            x: 0,
-            y: 0,
-            color: '#000000',
-            borderRadius: 0,
-            padding: 0,
-            textAlign: 'left',
-            zIndex: 1
-          }
-        };
-      
-      case 'group':
-        return {
-          childIds: [],
-          style: {
-            width: 200,
-            height: 200,
-            backgroundColor: 'transparent',
-            fontSize: 16,
-            fontWeight: 'normal',
-
-            x: 0,
-            y: 0,
-            color: '#000000',
-            borderRadius: 0,
-            padding: 0,
-            textAlign: 'left',
-            zIndex: 1
-          }
-        };
-      
-      default:
-        return {
-          content: `New ${elementType} element`,
-          style: {
-            width: 200,
+            ...baseElement.style,
+            width: 100,
             height: 100,
-            fontSize: 16,
-            fontWeight: 'normal',
-            x: 0,
-            y: 0,
-            color: '#000000',
-            backgroundColor: 'transparent',
-            borderRadius: 0,
-            padding: 0,
-            textAlign: 'left',
-            zIndex: 1
+            backgroundColor: '#3498db'
           }
         };
+
+      default:
+        throw new Error(`Unknown element type: ${elementType}`);
     }
   }
 
   /**
-   * Create multiple elements at once
-   */
-  static createMultipleElements(
-    elementTypes: string[],
-    startPosition: { x: number; y: number },
-    spacing: { x: number; y: number } = { x: 20, y: 20 },
-    startZIndex: number = 1
-  ): Element[] {
-    return elementTypes.map((type, index) => {
-      const position = {
-        x: startPosition.x + (index * spacing.x),
-        y: startPosition.y + (index * spacing.y)
-      };
-      
-      return this.createElement(type, position, startZIndex + index);
-    });
-  }
-
-  /**
-   * Create element with smart positioning (avoiding overlaps)
+   * Create element with smart positioning to avoid overlaps
    */
   static createElementWithSmartPositioning(
     elementType: string,
@@ -562,486 +137,215 @@ export class ElementFactoryService {
     zIndex: number,
     maxAttempts: number = 10
   ): Element {
-    let position = { ...preferredPosition };
-    let attempts = 0;
+    const element = this.createElement(elementType, preferredPosition, existingElements.length);
     
-    // Get default size for the element type
-    const defaultProps = this.getDefaultProperties(elementType);
-    const elementWidth = (defaultProps.style?.width as number) || 200;
-    const elementHeight = (defaultProps.style?.height as number) || 100;
+    // Try to find a non-overlapping position
+    let attempts = 0;
+    let currentPosition = { ...preferredPosition };
     
     while (attempts < maxAttempts) {
-      // Check if position overlaps with existing elements
-      const hasOverlap = existingElements.some(existing => {
-        const existingWidth = typeof existing.style.width === 'number' 
-          ? existing.style.width 
-          : parseFloat(existing.style.width as string);
-        const existingHeight = typeof existing.style.height === 'number' 
-          ? existing.style.height 
-          : parseFloat(existing.style.height as string);
-        
-        return !(
-          position.x >= existing.style.x + existingWidth ||
-          position.x + elementWidth <= existing.style.x ||
-          position.y >= existing.style.y + existingHeight ||
-          position.y + elementHeight <= existing.style.y
-        );
-      });
+      const tempElement = {
+        ...element,
+        style: { ...element.style, x: currentPosition.x, y: currentPosition.y, zIndex }
+      };
+      
+      const hasOverlap = existingElements.some(existing => 
+        this.elementsOverlap(tempElement, existing)
+      );
       
       if (!hasOverlap) {
-        break;
+        return {
+          ...element,
+          style: { ...element.style, x: currentPosition.x, y: currentPosition.y, zIndex }
+        };
       }
       
-      // Offset position to avoid overlap
-      position.x += 20;
-      position.y += 20;
+      // Try a new position with some offset
+      currentPosition.x += 20;
+      currentPosition.y += 20;
       attempts++;
     }
     
-    return this.createElement(elementType, position, zIndex);
+    // If we can't find a non-overlapping position, just use the preferred position
+    return {
+      ...element,
+      style: { ...element.style, x: preferredPosition.x, y: preferredPosition.y, zIndex }
+    };
   }
 
   /**
-   * Create element grid
-   */
-  static createElementGrid(
-    elementType: string,
-    rows: number,
-    columns: number,
-    startPosition: { x: number; y: number },
-    spacing: { x: number; y: number },
-    startZIndex: number = 1
-  ): Element[] {
-    const elements: Element[] = [];
-    
-    for (let row = 0; row < rows; row++) {
-      for (let col = 0; col < columns; col++) {
-        const position = {
-          x: startPosition.x + (col * spacing.x),
-          y: startPosition.y + (row * spacing.y)
-        };
-        
-        const element = this.createElement(
-          elementType, 
-          position, 
-          startZIndex + (row * columns + col)
-        );
-        
-        elements.push(element);
-      }
-    }
-    
-    return elements;
-  }
-
-  /**
-   * Create element from clipboard data
-   */
-  static createFromClipboard(
-    clipboardElement: Element,
-    pastePosition: { x: number; y: number },
-  ): Element {
-    return this.cloneElement(clipboardElement, pastePosition, `paste-${Date.now()}`);
-  }
-
-  /**
-   * Create group from selected elements
-   */
-  static createGroupFromElements(
-    selectedElements: Element[],
-    groupId?: string
-  ): { group: Element; updatedElements: Element[] } {
-    if (selectedElements.length === 0) {
-      throw new Error('Cannot create group from empty selection');
-    }
-
-    // Calculate bounding box of all selected elements
-    let minX = Infinity, minY = Infinity;
-    let maxX = -Infinity, maxY = -Infinity;
-    
-    selectedElements.forEach(el => {
-      const x = el.style.x;
-      const y = el.style.y;
-      const width = typeof el.style.width === 'number' ? el.style.width : parseInt(el.style.width as string);
-      const height = typeof el.style.height === 'number' ? el.style.height : parseInt(el.style.height as string);
-      
-      minX = Math.min(minX, x);
-      minY = Math.min(minY, y);
-      maxX = Math.max(maxX, x + width);
-      maxY = Math.max(maxY, y + height);
-    });
-
-    // Create group element
-    const groupElementId = groupId || `group-${Date.now()}`;
-    const group = this.createGroupElement(
-      groupElementId,
-      { x: minX, y: minY },
-      Math.max(...selectedElements.map(el => el.style.zIndex || 0)) + 1,
-      {
-        childIds: selectedElements.map(el => el.id),
-        style: {
-          x: minX,
-          y: minY,
-          width: maxX - minX,
-          height: maxY - minY,
-          fontSize: 16,
-          fontWeight: 'normal',
-          color: '#000000',
-          backgroundColor: 'transparent',
-          borderRadius: 0,
-          padding: 0,
-          textAlign: 'left',
-          zIndex: Math.max(...selectedElements.map(el => el.style.zIndex || 0)) + 1
-        }
-      }
-    );
-
-    // Update child elements to reference their parent group and adjust positions
-    const updatedElements = selectedElements.map(el => ({
-      ...el,
-      parentId: groupElementId,
-      style: {
-        ...el.style,
-        // Make position relative to the group
-        x: el.style.x - minX,
-        y: el.style.y - minY
-      }
-    }));
-
-    return { group, updatedElements };
-  }
-
-  /**
-   * Create elements from JSON data
-   */
-  static createFromJSON(jsonData: string): Element[] {
-    try {
-      const data = JSON.parse(jsonData);
-      
-      if (Array.isArray(data)) {
-        return data.map((elementData, index) => 
-          this.createFromTemplate(elementData, elementData.style || { x: 0, y: 0 }, index + 1)
-        );
-      } else if (data && typeof data === 'object') {
-        return [this.createFromTemplate(data, data.style || { x: 0, y: 0 }, 1)];
-      }
-      
-      return [];
-    } catch (error) {
-      console.error('Failed to create elements from JSON:', error);
-      return [];
-    }
-  }
-
-  /**
-   * Create element with validation
+   * Create a validated element that fits within canvas bounds
    */
   static createValidatedElement(
     elementType: string,
     position: { x: number; y: number },
     zIndex: number,
-    canvasBounds?: { width: number; height: number },
-    customProps?: Partial<Element>
+    canvasBounds: { width: number; height: number },
+    templateElement?: Partial<Element>
   ): Element {
-    let element = this.createElement(elementType, position, zIndex, customProps);
+    const element = templateElement 
+      ? { ...this.createElement(elementType, position, 0), ...templateElement }
+      : this.createElement(elementType, position, 0);
     
-    // Validate and constrain to canvas bounds if provided
-    if (canvasBounds) {
-      const elementWidth = typeof element.style.width === 'number' 
-        ? element.style.width 
-        : parseFloat(element.style.width as string);
-      const elementHeight = typeof element.style.height === 'number' 
-        ? element.style.height 
-        : parseFloat(element.style.height as string);
-      
-      // Ensure element fits within canvas
-      const constrainedX = Math.max(0, Math.min(position.x, canvasBounds.width - elementWidth));
-      const constrainedY = Math.max(0, Math.min(position.y, canvasBounds.height - elementHeight));
-      
-      element = {
-        ...element,
-        style: {
-          ...element.style,
-          x: constrainedX,
-          y: constrainedY
-        }
-      };
-    }
+    // Ensure element fits within canvas
+    const elementWidth = typeof element.style.width === 'number' 
+      ? element.style.width 
+      : parseFloat(element.style.width as string);
+    const elementHeight = typeof element.style.height === 'number' 
+      ? element.style.height 
+      : parseFloat(element.style.height as string);
     
-    return element;
-  }
-
-  /**
-   * Get element type categories
-   */
-  static getElementCategories(): { [category: string]: string[] } {
+    const constrainedX = Math.max(0, Math.min(position.x, canvasBounds.width - elementWidth));
+    const constrainedY = Math.max(0, Math.min(position.y, canvasBounds.height - elementHeight));
+    
     return {
-      text: ['heading', 'paragraph'],
-      media: ['image', 'video'],
-      interactive: ['button'],
-      shapes: ['shape'],
-      layout: ['group']
-    };
-  }
-
-  /**
-   * Get supported element types
-   */
-  static getSupportedElementTypes(): string[] {
-    return ['heading', 'paragraph', 'button', 'image', 'video', 'shape', 'group'];
-  }
-
-  /**
-   * Check if element type is supported
-   */
-  static isElementTypeSupported(elementType: string): boolean {
-    return this.getSupportedElementTypes().includes(elementType);
-  }
-
-  /**
-   * Get element type metadata
-   */
-  static getElementTypeMetadata(elementType: string): {
-    name: string;
-    description: string;
-    category: string;
-    icon: string;
-    defaultSize: { width: number; height: number };
-  } {
-    const metadata: { [key: string]: any } = {
-      heading: {
-        name: 'Heading',
-        description: 'Large text for titles and headers',
-        category: 'text',
-        icon: '📝',
-        defaultSize: { width: 200, height: 50 }
-      },
-      paragraph: {
-        name: 'Paragraph',
-        description: 'Regular text content',
-        category: 'text',
-        icon: '📄',
-        defaultSize: { width: 300, height: 100 }
-      },
-      button: {
-        name: 'Button',
-        description: 'Interactive clickable button',
-        category: 'interactive',
-        icon: '🔘',
-        defaultSize: { width: 120, height: 40 }
-      },
-      image: {
-        name: 'Image',
-        description: 'Display images and graphics',
-        category: 'media',
-        icon: '🖼️',
-        defaultSize: { width: 300, height: 200 }
-      },
-      video: {
-        name: 'Video',
-        description: 'Embed video content',
-        category: 'media',
-        icon: '🎥',
-        defaultSize: { width: 320, height: 240 }
-      },
-      shape: {
-        name: 'Shape',
-        description: 'Geometric shapes and forms',
-        category: 'shapes',
-        icon: '🔷',
-        defaultSize: { width: 150, height: 150 }
-      },
-      group: {
-        name: 'Group',
-        description: 'Container for multiple elements',
-        category: 'layout',
-        icon: '📦',
-        defaultSize: { width: 200, height: 200 }
+      ...element,
+      style: {
+        ...element.style,
+        x: constrainedX,
+        y: constrainedY,
+        zIndex
       }
     };
+  }
 
-    return metadata[elementType] || {
-      name: elementType,
-      description: 'Unknown element type',
-      category: 'unknown',
-      icon: '❓',
-      defaultSize: { width: 200, height: 100 }
+  /**
+   * Clone an element with new position and ID
+   */
+  static cloneElement(
+    element: Element,
+    newPosition: { x: number; y: number },
+    idSuffix?: string
+  ): Element {
+    return {
+      ...element,
+      id: `${element.type}-${idSuffix || Date.now()}`,
+      style: {
+        ...element.style,
+        x: newPosition.x,
+        y: newPosition.y
+      }
     };
   }
 
   /**
-   * Create element with auto-sizing based on content
+   * Create element from clipboard
    */
-  static createElementWithAutoSize(
-    elementType: string,
-    position: { x: number; y: number },
-    content: string,
-    zIndex: number,
-    customProps?: Partial<Element>
+  static createFromClipboard(
+    clipboardElement: Element,
+    position: { x: number; y: number }
   ): Element {
-    let element = this.createElement(elementType, position, zIndex, customProps);
-    
-    // Auto-size based on content for text elements
-    if (elementType === 'heading' || elementType === 'paragraph') {
-      const estimatedWidth = Math.max(200, content.length * 8);
-      const estimatedHeight = elementType === 'heading' ? 50 : Math.max(50, Math.ceil(content.length / 50) * 20);
-      
-      element = {
-        ...element,
-        content,
-        style: {
-          ...element.style,
-          width: Math.min(estimatedWidth, 600), // Max width constraint
-          height: estimatedHeight
-        }
-      };
-    } else {
-      element = {
-        ...element,
-        content
-      };
+    return this.cloneElement(clipboardElement, position, `paste-${Date.now()}`);
+  }
+
+  /**
+   * Create a group from multiple elements
+   */
+  static createGroupFromElements(elements: Element[]): { group: Element; updatedElements: Element[] } {
+    if (elements.length < 2) {
+      throw new Error('Need at least 2 elements to create a group');
     }
     
-    return element;
-  }
-
-  /**
-   * Create responsive element that adapts to container
-   */
-  static createResponsiveElement(
-    elementType: string,
-    position: { x: number; y: number },
-    containerSize: { width: number; height: number },
-    responsiveRatio: { width: number; height: number }, // e.g., { width: 0.5, height: 0.3 }
-    zIndex: number,
-    customProps?: Partial<Element>
-  ): Element {
-    const responsiveWidth = containerSize.width * responsiveRatio.width;
-    const responsiveHeight = containerSize.height * responsiveRatio.height;
+    // Calculate bounding box for all elements
+    const bounds = this.calculateBoundingBox(elements);
     
-    return this.createElement(elementType, position, zIndex, {
-      ...customProps,
+    // Create group element
+    const group: Element = {
+      id: `group-${Date.now()}`,
+      type: 'group',
+      content: '',
+      childIds: elements.map(el => el.id),
       style: {
-        x: position.x,
-        y: position.y,
-        width: responsiveWidth,
-        height: responsiveHeight,
-        fontSize: customProps?.style?.fontSize ?? 16,
-        fontWeight: customProps?.style?.fontWeight ?? 'normal',
-        color: customProps?.style?.color ?? '#000000',
-        backgroundColor: customProps?.style?.backgroundColor ?? 'transparent',
-        borderRadius: customProps?.style?.borderRadius ?? 0,
-        padding: customProps?.style?.padding ?? 0,
-        textAlign: customProps?.style?.textAlign ?? 'left',
-        zIndex: customProps?.style?.zIndex ?? zIndex,
-        ...customProps?.style
-      }
-    });
-  }
-
-  /**
-   * Batch create elements with performance optimization
-   */
-  static batchCreateElements(
-    elementConfigs: Array<{
-      type: string;
-      position: { x: number; y: number };
-      customProps?: Partial<Element>;
-    }>,
-    startZIndex: number = 1
-  ): Element[] {
-    return elementConfigs.map((config, index) => 
-      this.createElement(
-        config.type,
-        config.position,
-        startZIndex + index,
-        config.customProps
-      )
-    );
-  }
-
-  /**
-   * Create element with theme application
-   */
-  static createThemedElement(
-    elementType: string,
-    position: { x: number; y: number },
-    theme: {
-      primaryColor?: string;
-      secondaryColor?: string;
-      fontFamily?: string;
-      borderRadius?: number;
-    },
-    zIndex: number,
-    customProps?: Partial<Element>
-  ): Element {
-    const themedProps: Partial<Element> = {
-      ...customProps,
-      style: {
-        x: position.x,
-        y: position.y,
-        width: customProps?.style?.width ?? 200,
-        height: customProps?.style?.height ?? 100,
-        fontSize: customProps?.style?.fontSize ?? 16,
-        fontWeight: customProps?.style?.fontWeight ?? 'normal',
-        textAlign: customProps?.style?.textAlign ?? 'left',
-        padding: customProps?.style?.padding ?? 0,
-        zIndex: customProps?.style?.zIndex ?? zIndex,
-        color: theme.primaryColor ?? customProps?.style?.color ?? '#000000',
-        backgroundColor: theme.secondaryColor ?? customProps?.style?.backgroundColor ?? 'transparent',
-        borderRadius: theme.borderRadius ?? customProps?.style?.borderRadius ?? 0
+        x: bounds.x,
+        y: bounds.y,
+        width: bounds.width,
+        height: bounds.height,
+        fontSize: 16,
+        fontWeight: 'normal',
+        color: 'transparent',
+        backgroundColor: 'transparent',
+        borderRadius: 0,
+        padding: 0,
+        textAlign: 'left',
+        zIndex: Math.max(...elements.map(el => el.style.zIndex)) + 1
       }
     };
     
-    return this.createElement(elementType, position, zIndex, themedProps);
+    // Update child elements to be relative to group
+    const updatedElements = elements.map(element => ({
+      ...element,
+      parentId: group.id,
+      style: {
+        ...element.style,
+        x: element.style.x - bounds.x,
+        y: element.style.y - bounds.y
+      }
+    }));
+    
+    return { group, updatedElements };
   }
 
   /**
-   * Create element with accessibility features
+   * Calculate bounding box for multiple elements
    */
-  static createAccessibleElement(
-    elementType: string,
-    position: { x: number; y: number },
-    accessibilityProps: {
-      ariaLabel?: string;
-      ariaDescription?: string;
-      tabIndex?: number;
-      role?: string;
-    },
-    zIndex: number,
-    customProps?: Partial<Element>
-  ): Element {
-    return this.createElement(elementType, position, zIndex, {
-      ...customProps,
-      ...accessibilityProps
-    });
+  private static calculateBoundingBox(elements: Element[]): { x: number; y: number; width: number; height: number } {
+    const positions = elements.map(el => ({
+      left: el.style.x,
+      top: el.style.y,
+      right: el.style.x + (typeof el.style.width === 'number' ? el.style.width : parseFloat(el.style.width as string)),
+      bottom: el.style.y + (typeof el.style.height === 'number' ? el.style.height : parseFloat(el.style.height as string))
+    }));
+    
+    const left = Math.min(...positions.map(p => p.left));
+    const top = Math.min(...positions.map(p => p.top));
+    const right = Math.max(...positions.map(p => p.right));
+    const bottom = Math.max(...positions.map(p => p.bottom));
+    
+    return {
+      x: left,
+      y: top,
+      width: right - left,
+      height: bottom - top
+    };
   }
 
   /**
-   * Create element with animation presets
+   * Check if two elements overlap
    */
-  static createAnimatedElement(
-    elementType: string,
-    position: { x: number; y: number },
-    animationPreset: 'fade' | 'slide' | 'zoom' | 'bounce' | 'none',
-    zIndex: number,
-    customProps?: Partial<Element>
-  ): Element {
-    const animationConfig = {
-      entrance: {
-        type: animationPreset,
-        duration: 1000,
-        delay: 0
-      },
-      click: "none" as "none" | "bounce" | "bg-color" | "text-color" | "scale-down" | "pulse"
+  private static elementsOverlap(element1: Element, element2: Element): boolean {
+    const el1Width = typeof element1.style.width === 'number' 
+      ? element1.style.width 
+      : parseFloat(element1.style.width as string);
+    const el1Height = typeof element1.style.height === 'number' 
+      ? element1.style.height 
+      : parseFloat(element1.style.height as string);
+    const el2Width = typeof element2.style.width === 'number' 
+      ? element2.style.width 
+      : parseFloat(element2.style.width as string);
+    const el2Height = typeof element2.style.height === 'number' 
+      ? element2.style.height 
+      : parseFloat(element2.style.height as string);
+    
+    const rect1 = {
+      left: element1.style.x,
+      top: element1.style.y,
+      right: element1.style.x + el1Width,
+      bottom: element1.style.y + el1Height
     };
     
-    return this.createElement(elementType, position, zIndex, {
-      ...customProps,
-      animation: animationConfig,
-
-    });
+    const rect2 = {
+      left: element2.style.x,
+      top: element2.style.y,
+      right: element2.style.x + el2Width,
+      bottom: element2.style.y + el2Height
+    };
+    
+    return !(rect1.right <= rect2.left || 
+             rect2.right <= rect1.left || 
+             rect1.bottom <= rect2.top || 
+             rect2.bottom <= rect1.top);
   }
 }
 
 export default ElementFactoryService;
+

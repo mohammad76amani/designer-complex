@@ -283,28 +283,14 @@ export interface AnimationConfig {
  * Props for FloatingStyleEditor component
  */
 export interface FloatingStyleEditorProps {
-  element: Element;
-  onUpdateElement: (updatedElement: Element) => void;
-  onClose: () => void;
-  canvasRef: React.RefObject<HTMLDivElement>;
+  // All props removed - will come from context
 }
 
 /**
  * Props for CanvasRenderer component
  */
 export interface CanvasRendererProps {
-  blocks: Blocks;
-  onSelectElement: (element: Element | null, isMultiSelect?: boolean) => void;
-  selectedElementIds?: string[];
-  selectedElementId?: string;
-  onUpdateElement?: (element: Element) => void;
-  onUpdateElements?: (elements: Element[]) => void;
-  onElementContextMenu?: (element: Element, x: number, y: number) => void;
-  onCanvasContextMenu?: (x: number, y: number) => void;
-  onCloseContextMenu?: () => void;
-  canvasRef?: React.RefObject<HTMLDivElement>;
-  onOpenStyleEditor?: (element: Element) => void;
-  onCanvasHeightUpdate?: (newHeight: number) => void; // Add this back
+  // Most props removed - will come from context
 }
 
 
@@ -330,13 +316,7 @@ export interface DesignerRendererProps {
  */
 export interface ElementRendererProps {
   element: Element;
-  onSelect: (isMultiSelect?: boolean) => void;
-  isSelected: boolean;
-  onUpdateElement: (updatedElement: Element) => void;
-  canvasRef: React.RefObject<HTMLDivElement>;
-  onContextMenu: (element: Element, x: number, y: number) => void;
-  onOpenStyleEditor?: () => void;
-  isInGroup?: boolean;
+  // All other props removed - will come from context
 }
 
 
@@ -344,14 +324,7 @@ export interface ElementRendererProps {
  * Props for ContextMenu component
  */
 export interface ContextMenuProps {
-  x: number;
-  y: number;
-  onClose: () => void;
-  onDelete: () => void;
-  onCopy: () => void;
-  onCut: () => void;
-  onPaste?: () => void;
-  canPaste: boolean;
+  // All props removed - will come from context
 }
 
 /**
@@ -400,14 +373,12 @@ export interface GroupContainerProps {
 
 
 export interface ResponsiveCanvasToolbarProps {
-  currentBreakpoint: 'sm' | 'lg';
-  onBreakpointChange: (breakpoint: 'sm' | 'lg') => void;
-  breakpoints: { sm: number; lg: number };
+  // All props removed - will come from context
 }
 
 
 export interface ElementToolbarProps {
-  onAddElement: (elementType: string) => void;
+  // onAddElement removed - will come from context
 }
 
 /**
@@ -428,4 +399,57 @@ export interface ShapeSelectorProps {
   selectedElementId: string | null;
   timestamp: number;
   description?: string;
+}
+
+/**
+ * Designer context type that holds all state and actions for the designer
+ */
+
+export interface DesignerContextType {
+  // Element state
+  elements: Element[];
+  selectedElementIds: string[];
+  selectedElement: Element | null;
+  clipboard: Element | null;
+  
+  // Canvas state
+  canvasRef: React.RefObject<HTMLDivElement | null>;
+  currentBreakpoint: 'sm' | 'lg';
+  breakpoints: { sm: number; lg: number };
+  canvasWidth: number;
+  canvasHeight: number; // Now managed in state
+  
+  // UI state
+  showStyleEditor: boolean;
+  contextMenu: {
+    show: boolean;
+    x: number;
+    y: number;
+    element: Element | null;
+  };
+  
+  // Actions
+  setElements: (elements: Element[]) => void;
+  setSelectedElementIds: (ids: string[]) => void;
+  setSelectedElement: (element: Element | null) => void;
+  setClipboard: (element: Element | null) => void;
+  setShowStyleEditor: (show: boolean) => void;
+  setContextMenu: (menu: { show: boolean; x: number; y: number; element: Element | null }) => void;
+  setCurrentBreakpoint: (breakpoint: 'sm' | 'lg') => void;
+  setCanvasHeight: (height: number) => void; // Add this
+  
+  // Element operations
+  updateElement: (element: Element) => void;
+  updateElements: (elements: Element[]) => void;
+  selectElement: (element: Element | null, isMultiSelect?: boolean) => void;
+  addElement: (elementType: string) => void;
+  deleteElement: (elementId: string) => void;
+  
+  // Context menu operations
+  openContextMenu: (element: Element | null, x: number, y: number) => void;
+  closeContextMenu: () => void;
+  
+  // Style editor operations
+  openStyleEditor: (element: Element) => void;
+  closeStyleEditor: () => void;
 }

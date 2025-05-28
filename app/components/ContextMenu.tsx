@@ -1,27 +1,29 @@
 import React, { useEffect, useRef } from 'react';
-import { ContextMenuProps } from '../types/template';
+import { useDesigner } from '../contexts/DesignerContext';
 
-const ContextMenu: React.FC<ContextMenuProps> = ({ 
-  x, 
-  y, 
-  onClose, 
-  onDelete, 
-  onCopy, 
-  onCut,
-  onPaste,
-  canPaste
-}) => {
+const ContextMenu: React.FC = () => {
+  const {
+    contextMenu,
+    clipboard,
+    closeContextMenu,
+    deleteElement,
+    setClipboard
+  } = useDesigner();
+  
   const menuRef = useRef<HTMLDivElement>(null);
+  
+  if (!contextMenu.show) return null;
+  
+  const { x, y, element } = contextMenu;
   
   // Adjust position to ensure menu stays within viewport
   const adjustedX = Math.min(x, window.innerWidth - 150);
   const adjustedY = Math.min(y, window.innerHeight - 150);
   
-  // Handle click outside to close menu
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
-        onClose();
+        closeContextMenu();
       }
     };
     
@@ -29,7 +31,29 @@ const ContextMenu: React.FC<ContextMenuProps> = ({
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, [onClose]);
+  }, [closeContextMenu]);
+  
+  const handleCopy = () => {
+    if (element) {
+      setClipboard(element);
+      closeContextMenu();
+    }
+  };
+  
+  const handleCut = () => {
+    if (element) {
+      setClipboard(element);
+      deleteElement(element.id);
+      closeContextMenu();
+    }
+  };
+  
+  const handleDelete = () => {
+    if (element) {
+      deleteElement(element.id);
+      closeContextMenu();
+    }
+  };
   
   const menuStyle: React.CSSProperties = {
     position: 'fixed',
@@ -67,7 +91,8 @@ const ContextMenu: React.FC<ContextMenuProps> = ({
       <div 
         style={menuItemStyle} 
         className="context-menu-item"
-        onClick={onCopy}
+
+        onClick={handleCopy}
         onMouseEnter={(e) => Object.assign(e.currentTarget.style, menuItemHoverStyle)}
         onMouseLeave={(e) => e.currentTarget.style.backgroundColor = ''}
       >
@@ -76,19 +101,20 @@ const ContextMenu: React.FC<ContextMenuProps> = ({
       <div 
         style={menuItemStyle} 
         className="context-menu-item"
-        onClick={onCut}
+
+        onClick={handleCut}
         onMouseEnter={(e) => Object.assign(e.currentTarget.style, menuItemHoverStyle)}
         onMouseLeave={(e) => e.currentTarget.style.backgroundColor = ''}
       >
         <span style={{ fontSize: '16px' }}>✂️</span> Cut
       </div>
-      {onPaste && (
+      {clipboard && (
         <div 
-          style={canPaste ? menuItemStyle : disabledItemStyle} 
+          style={menuItemStyle} 
           className="context-menu-item"
-          onClick={canPaste ? onPaste : undefined}
-          onMouseEnter={(e) => canPaste && Object.assign(e.currentTarget.style, menuItemHoverStyle)}
-          onMouseLeave={(e) => canPaste && (e.currentTarget.style.backgroundColor = '')}
+          onClick={handleCopy}
+          onMouseEnter={(e) => Object.assign(e.currentTarget.style, menuItemHoverStyle)}
+          onMouseLeave={(e) => e.currentTarget.style.backgroundColor = ''}
         >
           <span style={{ fontSize: '16px' }}>📌</span> Paste
         </div>
@@ -97,7 +123,8 @@ const ContextMenu: React.FC<ContextMenuProps> = ({
       <div 
         style={{...menuItemStyle, color: '#e53935'}} 
         className="context-menu-item"
-        onClick={onDelete}
+
+        onClick={handleDelete}
         onMouseEnter={(e) => Object.assign(e.currentTarget.style, {...menuItemHoverStyle, color: '#e53935'})}
         onMouseLeave={(e) => {
           e.currentTarget.style.backgroundColor = '';
@@ -109,5 +136,4 @@ const ContextMenu: React.FC<ContextMenuProps> = ({
     </div>
   );
 };
-
 export default ContextMenu;

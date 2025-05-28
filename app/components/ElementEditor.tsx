@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
 import { Element } from '../types/template';
-import { ElementEditorProps } from '../types/template';
 
-const ElementEditor: React.FC<ElementEditorProps> = ({ element, onUpdateElement }) => {
+const ElementEditor= ({ element, onUpdateElement }: { element: Element, onUpdateElement: (element: Element) => void }) => {
   const [x, setX] = useState(element.style.x);
   const [y, setY] = useState(element.style.y);
   const [width, setWidth] = useState(element.style.width);

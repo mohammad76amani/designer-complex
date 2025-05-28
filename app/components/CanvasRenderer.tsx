@@ -1,26 +1,27 @@
-import React, { useRef, useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { useDesigner } from '../contexts/DesignerContext';
 import ElementRenderer from './ElementRenderer';
-import { CanvasRendererProps, Element } from '../types/template';
+import { Element } from '../types/template';
 import ElementManagementService from '../services/elementManagementService';
 import CanvasCalculationService from '../services/canvasCalculationService';
 
-const CanvasRenderer: React.FC<CanvasRendererProps> = ({ 
-  blocks, 
-  onSelectElement,
-  selectedElementIds = [],
-  onUpdateElement,
-  onUpdateElements,
-  onElementContextMenu,
-  onCanvasContextMenu,
-  onCloseContextMenu,
-  canvasRef: externalCanvasRef,
-  onOpenStyleEditor,
-  onCanvasHeightUpdate // Add this back
-}) => {
-  const localCanvasRef = useRef<HTMLDivElement>(null);
-  const canvasRef = (externalCanvasRef || localCanvasRef) as React.RefObject<HTMLDivElement>;
-  
-  // State for group dragging and resizing
+const CanvasRenderer: React.FC = () => {
+  const {
+    elements,
+    selectedElementIds,
+    canvasRef,
+    currentBreakpoint,
+    breakpoints,
+    canvasHeight, // Now from context
+    setCanvasHeight, // Add this
+    selectElement,
+    updateElement,
+    updateElements,
+    openContextMenu,
+    closeContextMenu
+  } = useDesigner();
+
+  // Local state for group operations
   const [activeGroupId, setActiveGroupId] = useState<string | null>(null);
   const [isDraggingGroup, setIsDraggingGroup] = useState<boolean>(false);
   const [isResizingGroup, setIsResizingGroup] = useState<boolean>(false);
@@ -35,60 +36,19 @@ const CanvasRenderer: React.FC<CanvasRendererProps> = ({
   const [initialCanvasHeight, setInitialCanvasHeight] = useState<number>(0);
   const [initialCanvasMouseY, setInitialCanvasMouseY] = useState<number>(0);
   
-  // Handle both setting and settings properties
-  const settings = blocks.setting || blocks.settings;
-  const { elements } = blocks;
-  
-  if (!settings) {
-    console.error("No settings found in blocks");
-    return null;
-  }
+  // Get canvas settings from context
+  const canvasWidth = breakpoints[currentBreakpoint];
 
-  // Parse canvas dimensions with responsive width support
-  const parseCanvasDimension = useCallback((dimension: string | number | undefined, defaultValue: number): number => {
-    if (typeof dimension === 'number') {
-      return isNaN(dimension) ? defaultValue : dimension;
-    }
-    
-    if (typeof dimension === 'string') {
-      if (dimension.includes('%')) {
-        return defaultValue;
-      }
-      const parsed = parseFloat(dimension.replace('px', ''));
-      return isNaN(parsed) ? defaultValue : parsed;
-    }
-    
-    return defaultValue;
-  }, []);
-
-  // Get responsive canvas width
-  const getResponsiveCanvasWidth = useCallback((): number => {
-    const breakpoints = settings.breakpoints || { sm: 400, lg: 1000 };
-    const canvasWidth = settings.canvasWidth;
-    
-    if (canvasWidth === 'sm') {
-      return breakpoints.sm;
-    } else if (canvasWidth === 'lg') {
-      return breakpoints.lg;
-    }
-    
-    // Fallback to numeric value or default
-    return parseCanvasDimension(canvasWidth, breakpoints.lg);
-  }, [settings, parseCanvasDimension]);
-
-  const canvasWidth = getResponsiveCanvasWidth();
-  const canvasHeight = parseCanvasDimension(settings.canvasHeight, 600);
-  
   const canvasStyle: React.CSSProperties = {
     width: `${canvasWidth}px`,
     height: `${canvasHeight}px`,
-    backgroundColor: settings.backgroundColor,
+    backgroundColor: '#ffffff',
     position: 'relative',
     overflow: 'hidden',
     border: '2px solid #dee2e6',
     borderRadius: '8px',
     boxSizing: 'border-box',
-    transition: 'width 0.3s ease-in-out', // Smooth transition when switching breakpoints
+    transition: 'width 0.3s ease-in-out',
   };
 
   // Handle canvas height resize start
@@ -96,6 +56,8 @@ const CanvasRenderer: React.FC<CanvasRendererProps> = ({
     if (e.button !== 0) return; // Only left mouse button
     e.preventDefault();
     e.stopPropagation();
+    
+    console.log('Starting canvas height resize'); // Debug log
     
     setIsResizingCanvasHeight(true);
     setInitialCanvasHeight(canvasHeight);
@@ -110,22 +72,24 @@ const CanvasRenderer: React.FC<CanvasRendererProps> = ({
       const deltaY = e.clientY - initialCanvasMouseY;
       const newHeight = Math.max(200, initialCanvasHeight + deltaY); // Min height of 200px
       
+      console.log('Resizing canvas height:', newHeight); // Debug log
+      
       // Update canvas height visually
       if (canvasRef.current) {
         canvasRef.current.style.height = `${newHeight}px`;
       }
     };
 
-    const handleMouseUp = () => {
+    const handleMouseUp = (e: MouseEvent) => {
       if (!isResizingCanvasHeight) return;
       
-      const deltaY = window.event ? (window.event as MouseEvent).clientY - initialCanvasMouseY : 0;
+      const deltaY = e.clientY - initialCanvasMouseY;
       const newHeight = Math.max(200, initialCanvasHeight + deltaY);
       
-      // Call the callback to update the template
-      if (onCanvasHeightUpdate) {
-        onCanvasHeightUpdate(newHeight);
-      }
+      console.log('Finished resizing canvas height:', newHeight); // Debug log
+      
+      // Update the canvas height in context
+      setCanvasHeight(newHeight);
       
       setIsResizingCanvasHeight(false);
     };
@@ -139,49 +103,37 @@ const CanvasRenderer: React.FC<CanvasRendererProps> = ({
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('mouseup', handleMouseUp);
     };
-  }, [isResizingCanvasHeight, initialCanvasHeight, initialCanvasMouseY, onCanvasHeightUpdate]);
-  
+  }, [isResizingCanvasHeight, initialCanvasHeight, initialCanvasMouseY, setCanvasHeight, canvasRef]);
+
   const handleCanvasContextMenu = (e: React.MouseEvent<HTMLDivElement>) => {
     e.preventDefault();
-    
-    // Only handle direct right-clicks on the canvas, not on elements
-    if (e.target === e.currentTarget && onCanvasContextMenu) {
-      onCanvasContextMenu(e.clientX, e.clientY);
+    if (e.target === e.currentTarget) {
+      openContextMenu(null, e.clientX, e.clientY);
     }
   };
   
-  // Handle canvas click to close context menu and clear selection if not multi-selecting
   const handleCanvasClick = (e: React.MouseEvent<HTMLDivElement>) => {
-    // Only handle direct clicks on the canvas, not on elements
     if (e.target === e.currentTarget) {
-      if (onCloseContextMenu) {
-        onCloseContextMenu();
-      }
-      
-      // Clear selection unless shift/ctrl is pressed for multi-select
+      closeContextMenu();
       if (!e.shiftKey && !e.ctrlKey && !e.metaKey) {
-        onSelectElement(null);
+        selectElement(null);
       }
     }
   };
   
   // Handle group mouse down
   const handleGroupMouseDown = (e: React.MouseEvent<HTMLDivElement>, groupId: string, groupElement: Element) => {
-    // Only respond to left mouse button (button 0)
     if (e.button !== 0) return;
     
     e.preventDefault();
     e.stopPropagation();
     
-    // Select the group
     const isMultiSelect = e.shiftKey || e.ctrlKey || e.metaKey;
-    onSelectElement(groupElement, isMultiSelect);
+    selectElement(groupElement, isMultiSelect);
     
-    // Start dragging
     setActiveGroupId(groupId);
     setIsDraggingGroup(true);
     
-    // Calculate the offset from the mouse position to the group's top-left corner
     const rect = e.currentTarget.getBoundingClientRect();
     setDragOffset({
       x: e.clientX - rect.left,
@@ -191,7 +143,6 @@ const CanvasRenderer: React.FC<CanvasRendererProps> = ({
   
   // Handle group resize start
   const handleGroupResizeStart = (e: React.MouseEvent<HTMLDivElement>, handle: string, groupId: string) => {
-    // Only respond to left mouse button (button 0)
     if (e.button !== 0) return;
     
     e.preventDefault();
@@ -241,7 +192,6 @@ const CanvasRenderer: React.FC<CanvasRendererProps> = ({
         let newX = canvasCoords.x - dragOffset.x;
         let newY = canvasCoords.y - dragOffset.y;
         
-        // Apply snapping for groups
         const groupElement = elements.find(el => el.id === activeGroupId);
         if (groupElement) {
           const tempGroup = {
@@ -275,7 +225,7 @@ const CanvasRenderer: React.FC<CanvasRendererProps> = ({
             canvasCoords,
             initialSize,
             initialMousePosition,
-            { width: 100, height: 100 } // min group size
+            { width: 100, height: 100 }
           );
           
           const groupEl = document.querySelector(`[data-element-id="${activeGroupId}"]`);
@@ -301,7 +251,6 @@ const CanvasRenderer: React.FC<CanvasRendererProps> = ({
         return;
       }
 
-      // Get final position/size and update using service
       const groupEl = document.querySelector(`[data-element-id="${activeGroupId}"]`);
       if (groupEl && canvasRef.current) {
         const rect = groupEl.getBoundingClientRect();
@@ -312,14 +261,12 @@ const CanvasRenderer: React.FC<CanvasRendererProps> = ({
         const finalWidth = rect.width;
         const finalHeight = rect.height;
 
-        // Use service to resize the group
         const updatedGroup = ElementManagementService.resizeElement(
           groupElement,
           { width: finalWidth, height: finalHeight },
           { x: finalX, y: finalY }
         );
 
-        // Update child elements if resizing
         if (isResizingGroup) {
           const scaleX = finalWidth / (typeof groupElement.style.width === 'number' ? 
             groupElement.style.width : parseFloat(groupElement.style.width as string));
@@ -343,15 +290,10 @@ const CanvasRenderer: React.FC<CanvasRendererProps> = ({
             [updatedGroup, ...updatedChildren]
           );
           
-          if (onUpdateElements) {
-            onUpdateElements(allUpdatedElements);
-          }
+          updateElements(allUpdatedElements);
         } else {
-          // Just update the group position
           const updatedElements = ElementManagementService.updateElement(elements, updatedGroup);
-          if (onUpdateElements) {
-            onUpdateElements(updatedElements);
-          }
+          updateElements(updatedElements);
         }
       }
 
@@ -374,7 +316,7 @@ const CanvasRenderer: React.FC<CanvasRendererProps> = ({
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('mouseup', handleMouseUp);
     };
-  }, [isDraggingGroup, isResizingGroup, activeGroupId, resizeHandle, dragOffset, initialSize, initialPosition, initialMousePosition, elements, onUpdateElements]);
+  }, [isDraggingGroup, isResizingGroup, activeGroupId, resizeHandle, dragOffset, initialSize, initialPosition, initialMousePosition, elements, updateElements]);
   
   // Render resize handles for a group
   const renderGroupResizeHandles = (groupId: string, groupElement: Element) => {
@@ -419,7 +361,6 @@ const CanvasRenderer: React.FC<CanvasRendererProps> = ({
     const { id, style } = groupElement;
     const isSelected = selectedElementIds.includes(id);
     
-    // Find all child elements of this group
     const childElements = elements.filter(el => el.parentId === id);
     
     return (
@@ -442,25 +383,16 @@ const CanvasRenderer: React.FC<CanvasRendererProps> = ({
         }}
         onMouseDown={(e) => handleGroupMouseDown(e, id, groupElement)}
       >
-        {/* Render all child elements */}
         {childElements.map((element) => (
           <ElementRenderer 
             key={element.id} 
-            element={element} 
-            onSelect={(isMultiSelect) => onSelectElement(element, isMultiSelect)}
-            isSelected={selectedElementIds.includes(element.id)}
-            onUpdateElement={onUpdateElement}
-            canvasRef={canvasRef}
-            onContextMenu={onElementContextMenu}
-            onOpenStyleEditor={onOpenStyleEditor ? () => onOpenStyleEditor(element) : undefined}
+            element={element}
             isInGroup={true}
           />
         ))}
         
-        {/* Render resize handles if selected */}
         {isSelected && renderGroupResizeHandles(id, groupElement)}
         
-        {/* Group label */}
         {isSelected && (
           <div
             style={{
@@ -487,11 +419,14 @@ const CanvasRenderer: React.FC<CanvasRendererProps> = ({
   
   // Add grid rendering component
   const renderGrid = () => {
-    if (!settings.showGrid || !canvasRef.current) return null;
+    const showGrid = true; // This should come from canvas settings
+    const gridSize = 20; // This should come from canvas settings
+    
+    if (!showGrid || !canvasRef.current) return null;
     
     const gridLines = CanvasCalculationService.calculateGridLines(
       { width: canvasWidth, height: canvasHeight },
-      settings.gridSize || 20
+      gridSize
     );
     
     return (
@@ -530,8 +465,8 @@ const CanvasRenderer: React.FC<CanvasRendererProps> = ({
 
   // Render canvas size indicator
   const renderCanvasSizeIndicator = () => {
-    const breakpointLabel = settings.canvasWidth === 'sm' ? 'Mobile' : 'Desktop';
-    const breakpointColor = settings.canvasWidth === 'sm' ? '#dc3545' : '#28a745';
+    const breakpointLabel = currentBreakpoint === 'sm' ? 'Mobile' : 'Desktop';
+    const breakpointColor = currentBreakpoint === 'sm' ? '#dc3545' : '#28a745';
     
     return (
       <div
@@ -556,7 +491,9 @@ const CanvasRenderer: React.FC<CanvasRendererProps> = ({
 
   // Render canvas height resize handle
   const renderCanvasHeightResizeHandle = () => {
-    if (!settings.resizable) return null;
+    const resizable = true; // This should come from canvas settings
+    
+    if (!resizable) return null;
     
     return (
       <div
@@ -604,10 +541,10 @@ const CanvasRenderer: React.FC<CanvasRendererProps> = ({
       <div 
         className="canvas" 
         style={canvasStyle}
-        data-grid-size={settings.gridSize}
-        data-show-grid={settings.showGrid}
-        data-canvas-width={settings.canvasWidth}
-        data-breakpoint={settings.canvasWidth}
+        data-grid-size={20}
+        data-show-grid={true}
+        data-canvas-width={currentBreakpoint}
+        data-breakpoint={currentBreakpoint}
         ref={canvasRef}
         onContextMenu={handleCanvasContextMenu}
         onClick={handleCanvasClick}
@@ -624,13 +561,7 @@ const CanvasRenderer: React.FC<CanvasRendererProps> = ({
           return (
             <ElementRenderer 
               key={element.id} 
-              element={element} 
-              onSelect={(isMultiSelect) => onSelectElement(element, isMultiSelect)}
-              isSelected={selectedElementIds.includes(element.id)}
-              onUpdateElement={onUpdateElement}
-              canvasRef={canvasRef}
-              onContextMenu={onElementContextMenu}
-              onOpenStyleEditor={onOpenStyleEditor ? () => onOpenStyleEditor(element) : undefined}
+              element={element}
               isInGroup={false}
             />
           );

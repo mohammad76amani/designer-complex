@@ -1,74 +1,59 @@
-import React, { useState, useEffect } from 'react';
-import HistoryService from '../services/historyService';
+import React from 'react';
+import { useHistory } from '../contexts/HistoryContext';
 
 const HistoryPanel: React.FC = () => {
-  const [isOpen, setIsOpen] = useState(false);
-  const [historySummary, setHistorySummary] = useState(HistoryService.getHistorySummary());
-  
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setHistorySummary(HistoryService.getHistorySummary());
-    }, 1000);
-    
-    return () => clearInterval(interval);
-  }, []);
-  
-  if (!isOpen) {
-    return (
-      <button 
-        onClick={() => setIsOpen(true)}
-        style={{ position: 'fixed', top: '10px', right: '10px', zIndex: 1000 }}
-      >
-        📜 History
-      </button>
-    );
-  }
-  
+  const {
+    canUndo,
+    canRedo,
+    undo,
+    redo,
+    getUndoDescription,
+    getRedoDescription
+  } = useHistory();
+
   return (
-    <div style={{
-      position: 'fixed',
-      top: '10px',
-      right: '10px',
-      width: '300px',
-      maxHeight: '400px',
-      backgroundColor: 'white',
-      border: '1px solid #ddd',
-      borderRadius: '8px',
-      padding: '16px',
-      zIndex: 1000,
-      overflow: 'auto'
+    <div className="history-panel" style={{
+      padding: '10px',
+      backgroundColor: '#f8f9fa',
+      borderRadius: '4px',
+      border: '1px solid #dee2e6'
     }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '16px' }}>
-        <h3>History</h3>
-        <button onClick={() => setIsOpen(false)}>×</button>
-      </div>
+      <h4 style={{ margin: '0 0 10px 0', fontSize: '14px' }}>History</h4>
       
-      <div style={{ marginBottom: '16px', fontSize: '12px', color: '#666' }}>
-        Memory: {HistoryService.getMemoryUsage().estimatedSizeKB}KB
-      </div>
-      
-      <div style={{ maxHeight: '300px', overflow: 'auto' }}>
-        {historySummary.map((state, index) => (
-          <div
-            key={index}
-            style={{
-              padding: '8px',
-              backgroundColor: state.isCurrent ? '#e3f2fd' : 'transparent',
-              borderRadius: '4px',
-              marginBottom: '4px',
-              cursor: 'pointer',
-              fontSize: '12px'
-            }}
-           
-          >
-            <div style={{ fontWeight: state.isCurrent ? 'bold' : 'normal' }}>
-              {state.description}
-            </div>
-            <div style={{ color: '#999' }}>
-              {state.elementCount} elements • {new Date(state.timestamp).toLocaleTimeString()}
-            </div>
-          </div>
-        ))}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+        <button
+          onClick={undo}
+          disabled={!canUndo}
+          style={{
+            padding: '8px 12px',
+            backgroundColor: canUndo ? '#6c757d' : '#e9ecef',
+            color: canUndo ? 'white' : '#6c757d',
+            border: 'none',
+            borderRadius: '4px',
+            cursor: canUndo ? 'pointer' : 'not-allowed',
+            fontSize: '12px'
+          }}
+          title={getUndoDescription() || 'Nothing to undo'}
+        >
+          ↶ Undo {getUndoDescription() && `(${getUndoDescription()})`}
+        </button>
+        
+        <button
+          onClick={redo}
+          disabled={!canRedo}
+          style={{
+            padding: '8px 12px',
+            backgroundColor: canRedo ? '#6c757d' : '#e9ecef',
+            color: canRedo ? 'white' : '#6c757d',
+            border: 'none',
+            borderRadius: '4px',
+            cursor: canRedo ? 'pointer' : 'not-allowed',
+            fontSize: '12px'
+          }}
+          title={getRedoDescription() || 'Nothing to redo'}
+        >
+          ↷ Redo {getRedoDescription() && `(${getRedoDescription()})`}
+        </button>
       </div>
     </div>
   );

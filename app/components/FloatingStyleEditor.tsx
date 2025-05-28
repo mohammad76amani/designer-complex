@@ -1,36 +1,40 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { FloatingStyleEditorProps } from '../types/template';
+import { useDesigner } from '../contexts/DesignerContext';
 import AnimationEditor from './AnimationEditor';
 import ElementManagementService from '../services/elementManagementService';
 
-const FloatingStyleEditor: React.FC<FloatingStyleEditorProps> = ({
-  element,
-  onUpdateElement,
-  onClose
-}) => {
+const FloatingStyleEditor: React.FC = () => {
+  const {
+    selectedElement,
+    updateElement,
+    closeStyleEditor
+  } = useDesigner();
+  
   const editorRef = useRef<HTMLDivElement>(null);
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const [activeTab, setActiveTab] = useState('style'); // 'style', 'content', 'effects', 'animation'
 
+  if (!selectedElement) return null;
+
   // Set initial position based on element position
   useEffect(() => {
     // Position the editor to the right of the element
-    const x = element.style.x + (element.style.width as number) + 20;
+    const x = selectedElement.style.x + (selectedElement.style.width as number) + 20;
     // Align with the top of the element
-    const y = element.style.y;
+    const y = selectedElement.style.y;
 
     // Adjust if it would go off-screen
     const adjustedX = Math.min(x, window.innerWidth - 280);
     const adjustedY = Math.min(y, window.innerHeight - 300);
 
     setPosition({ x: adjustedX, y: adjustedY });
-  }, [element]);
+  }, [selectedElement]);
 
   // Handle click outside to close
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (editorRef.current && !editorRef.current.contains(event.target as Node)) {
-        onClose();
+        closeStyleEditor();
       }
     };
 
@@ -38,18 +42,18 @@ const FloatingStyleEditor: React.FC<FloatingStyleEditorProps> = ({
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, [onClose]);
+  }, [closeStyleEditor]);
 
   // Update element style
   const updateStyle = (property: string, value: any) => {
-    let updatedElement = { ...element };
+    let updatedElement = { ...selectedElement };
 
     if (property.includes('.')) {
       const [parent, child] = property.split('.');
       if (parent === 'animation') {
-        const currentAnimation = element.animation || {};
+        const currentAnimation = selectedElement.animation || {};
         updatedElement = {
-          ...element,
+          ...selectedElement,
           animation: {
             ...currentAnimation,
             [child]: value,
@@ -58,20 +62,20 @@ const FloatingStyleEditor: React.FC<FloatingStyleEditorProps> = ({
         };
       }
     } else {
-      if (element.type === 'shape' && property === 'backgroundColor') {
+      if (selectedElement.type === 'shape' && property === 'backgroundColor') {
         updatedElement = {
-          ...element,
+          ...selectedElement,
           style: {
-            ...element.style,
+            ...selectedElement.style,
             backgroundColor: 'rgba(255, 0, 0, 0)',
             color: value
           }
         };
       } else {
         updatedElement = {
-          ...element,
+          ...selectedElement,
           style: {
-            ...element.style,
+            ...selectedElement.style,
             [property]: value
           }
         };
@@ -81,19 +85,19 @@ const FloatingStyleEditor: React.FC<FloatingStyleEditorProps> = ({
     // Validate before updating
     const validation = ElementManagementService.validateElement(updatedElement);
     if (validation.isValid) {
-      onUpdateElement(updatedElement);
+      updateElement(updatedElement);
     } else {
       console.warn('Element validation failed:', validation.errors);
       // Still update but log warnings
-      onUpdateElement(updatedElement);
+      updateElement(updatedElement);
     }
   };
 
   // Update element attributes (src, href, alt)
   const updateAttribute = (attribute: string, value: string | boolean) => {
     console.log(`Updating attribute: ${attribute} to value: ${value}`);
-    onUpdateElement({
-      ...element,
+    updateElement({
+      ...selectedElement,
       [attribute]: value
     });
   };
@@ -102,8 +106,8 @@ const FloatingStyleEditor: React.FC<FloatingStyleEditorProps> = ({
 
   // Update element content
   const updateContent = (value: string) => {
-    onUpdateElement({
-      ...element,
+    updateElement({
+      ...selectedElement,
       content: value
     });
   };
@@ -225,23 +229,23 @@ const FloatingStyleEditor: React.FC<FloatingStyleEditorProps> = ({
       {/* Background and Border - common to most elements */}
       <div className="control-group">
         <h4>Appearance</h4>
-        {renderColorPicker('Background', 'backgroundColor', element.style.backgroundColor)}
-        {renderNumberInput('Border Radius', 'borderRadius', element.style.borderRadius, 0, 100)}
-        {renderNumberInput('Z-Index', 'zIndex', element.style.zIndex, 0, 1000, 1, '')}
+        {renderColorPicker('Background', 'backgroundColor', selectedElement.style.backgroundColor)}
+        {renderNumberInput('Border Radius', 'borderRadius', selectedElement.style.borderRadius, 0, 100)}
+        {renderNumberInput('Z-Index', 'zIndex', selectedElement.style.zIndex, 0, 1000, 1, '')}
 
         {/* Add opacity control - not in the original template */}
         {renderNumberInput('Opacity', 'opacity',
-          element.style.opacity !== undefined ? element.style.opacity : 1,
+          selectedElement.style.opacity !== undefined ? selectedElement.style.opacity : 1,
           0, 1, 0.1, '')}
       </div>
 
       {/* Element-specific controls */}
-      {(element.type === 'button' || element.type === 'paragraph' || element.type === 'heading') && (
+      {(selectedElement.type === 'button' || selectedElement.type === 'paragraph' || selectedElement.type === 'heading') && (
         <div className="control-group">
           <h4>Typography</h4>
-          {renderColorPicker('Text Color', 'color', element.style.color)}
-          {renderNumberInput('Font Size', 'fontSize', element.style.fontSize, 8, 72)}
-          {renderSelect('Font Weight', 'fontWeight', element.style.fontWeight, [
+          {renderColorPicker('Text Color', 'color', selectedElement.style.color)}
+          {renderNumberInput('Font Size', 'fontSize', selectedElement.style.fontSize, 8, 72)}
+          {renderSelect('Font Weight', 'fontWeight', selectedElement.style.fontWeight, [
             { value: 'normal', label: 'Normal' },
             { value: 'bold', label: 'Bold' },
             { value: '100', label: 'Thin (100)' },
@@ -254,21 +258,21 @@ const FloatingStyleEditor: React.FC<FloatingStyleEditorProps> = ({
             { value: '800', label: 'Extra Bold (800)' },
             { value: '900', label: 'Black (900)' }
           ])}
-          {renderSelect('Text Align', 'textAlign', element.style.textAlign, [
+          {renderSelect('Text Align', 'textAlign', selectedElement.style.textAlign, [
             { value: 'left', label: 'Left' },
             { value: 'center', label: 'Center' },
             { value: 'right', label: 'Right' }
           ])}
-          {renderNumberInput('Padding', 'padding', element.style.padding, 0, 50)}
+          {renderNumberInput('Padding', 'padding', selectedElement.style.padding, 0, 50)}
 
           {/* Add letter spacing - not in the original template */}
           {renderNumberInput('Letter Spacing', 'letterSpacing',
-            element.style.letterSpacing !== undefined ? element.style.letterSpacing : 0,
+            selectedElement.style.letterSpacing !== undefined ? selectedElement.style.letterSpacing : 0,
             -5, 10, 0.1, 'px')}
 
           {/* Add line height - not in the original template */}
           {renderNumberInput('Line Height', 'lineHeight',
-            element.style.lineHeight !== undefined ? element.style.lineHeight : 1.5,
+            selectedElement.style.lineHeight !== undefined ? selectedElement.style.lineHeight : 1.5,
             0.5, 3, 0.1, '')}
         </div>
       )}
@@ -277,30 +281,30 @@ const FloatingStyleEditor: React.FC<FloatingStyleEditorProps> = ({
       <div className="control-group">
         <h4>Border</h4>
         {renderNumberInput('Border Width', 'borderWidth',
-          element.style.borderWidth !== undefined ? element.style.borderWidth : 0,
+          selectedElement.style.borderWidth !== undefined ? selectedElement.style.borderWidth : 0,
           0, 20, 1, 'px')}
         {renderSelect('Border Style', 'borderStyle',
-          element.style.borderStyle !== undefined ? element.style.borderStyle : 'none', [
+          selectedElement.style.borderStyle !== undefined ? selectedElement.style.borderStyle : 'none', [
           { value: 'none', label: 'None' },
           { value: 'solid', label: 'Solid' },
           { value: 'dashed', label: 'Dashed' },
           { value: 'dotted', label: 'Dotted' }
         ])}
         {renderColorPicker('Border Color', 'borderColor',
-          element.style.borderColor !== undefined ? element.style.borderColor : '#000000')}
+          selectedElement.style.borderColor !== undefined ? selectedElement.style.borderColor : '#000000')}
       </div>
 
       {/* Add shadow controls - not in the original template */}
       <div className="control-group">
         <h4>Shadow</h4>
         {renderNumberInput('Shadow Blur', 'boxShadowBlur',
-          element.style.boxShadowBlur !== undefined ? element.style.boxShadowBlur : 0,
+          selectedElement.style.boxShadowBlur !== undefined ? selectedElement.style.boxShadowBlur : 0,
           0, 50, 1, 'px')}
         {renderNumberInput('Shadow Spread', 'boxShadowSpread',
-          element.style.boxShadowSpread !== undefined ? element.style.boxShadowSpread : 0,
+          selectedElement.style.boxShadowSpread !== undefined ? selectedElement.style.boxShadowSpread : 0,
           0, 50, 1, 'px')}
         {renderColorPicker('Shadow Color', 'boxShadowColor',
-          element.style.boxShadowColor !== undefined ? element.style.boxShadowColor : 'rgba(0,0,0,0.2)')}
+          selectedElement.style.boxShadowColor !== undefined ? selectedElement.style.boxShadowColor : 'rgba(0,0,0,0.2)')}
       </div>
     </div>
   );
@@ -309,22 +313,22 @@ const FloatingStyleEditor: React.FC<FloatingStyleEditorProps> = ({
   const renderContentTab = () => (
     <div className="tab-content">
       {/* Only show text tab for text elements */}
-      {(element.type === 'button' || element.type === 'paragraph' || element.type === 'heading') && (
+      {(selectedElement.type === 'button' || selectedElement.type === 'paragraph' || selectedElement.type === 'heading') && (
         <div className="control-group">
           <h4>Text Content</h4>
-          {renderTextArea('Content', element.content)}
+          {renderTextArea('Content', selectedElement.content)}
         </div>
       )}
 
       {/* Button-specific controls */}
-      {element.type === 'button' && (
+      {selectedElement.type === 'button' && (
         <div className="control-group">
           <h4>Button Properties</h4>
-          {renderTextInput('Link URL', 'href', element.href || '')}
+          {renderTextInput('Link URL', 'href', selectedElement.href || '')}
 
           {/* Add target attribute - not in the original template */}
           {renderSelect('Open Link In', 'target',
-            element.target !== undefined ? element.target : '_self', [
+            selectedElement.target !== undefined ? selectedElement.target : '_self', [
             { value: '_self', label: 'Same Window' },
             { value: '_blank', label: 'New Window' }
           ])}
@@ -332,15 +336,15 @@ const FloatingStyleEditor: React.FC<FloatingStyleEditorProps> = ({
       )}
 
       {/* Image-specific controls */}
-      {element.type === 'image' && (
+      {selectedElement.type === 'image' && (
         <div className="control-group">
           <h4>Image Properties</h4>
-          {renderTextInput('Image URL', 'src', element.src || '')}
-          {renderTextInput('Alt Text', 'alt', element.alt || '')}
+          {renderTextInput('Image URL', 'src', selectedElement.src || '')}
+          {renderTextInput('Alt Text', 'alt', selectedElement.alt || '')}
 
           {/* Add object-fit property - not in the original template */}
           {renderSelect('Image Fit', 'objectFit',
-            element.style.objectFit !== undefined ? element.style.objectFit : 'cover', [
+            selectedElement.style.objectFit !== undefined ? selectedElement.style.objectFit : 'cover', [
             { value: 'cover', label: 'Cover' },
             { value: 'contain', label: 'Contain' },
             { value: 'fill', label: 'Fill' },
@@ -350,24 +354,24 @@ const FloatingStyleEditor: React.FC<FloatingStyleEditorProps> = ({
       )}
 
       {/* Shape-specific controls */}
-      {element.type === 'shape' && (
+      {selectedElement.type === 'shape' && (
         <div className="control-group">
           <h4>Shape Properties</h4>
           <div className="style-control">
             <label>Shape Type</label>
             <select
-              value={element.shapeType || 'rectangle'}
+              value={selectedElement.shapeType || 'rectangle'}
               onChange={(e) => {
                 const newShapeType = e.target.value;
-                console.log(`Changing shape type to: ${newShapeType} for element ID: ${element.id}`);
+                console.log(`Changing shape type to: ${newShapeType} for element ID: ${selectedElement.id}`);
 
                 const updatedElement = {
-                  ...element,
+                  ...selectedElement,
                   shapeType: newShapeType
                 };
 
                 console.log('Updated element:', updatedElement);
-                onUpdateElement(updatedElement);
+                updateElement(updatedElement);
               }}
             >
               <option value="rectangle">Rectangle</option>
@@ -381,10 +385,10 @@ const FloatingStyleEditor: React.FC<FloatingStyleEditorProps> = ({
       )}
 
       {/* Video-specific controls */}
-      {element.type === 'video' && (
+      {selectedElement.type === 'video' && (
         <div className="control-group">
           <h4>Video Properties</h4>
-          {renderTextInput('Video URL', 'videoSrc', element.videoSrc || '')}
+          {renderTextInput('Video URL', 'videoSrc', selectedElement.videoSrc || '')}
 
           <div className="style-control">
             <label>Video Options</label>
@@ -392,7 +396,7 @@ const FloatingStyleEditor: React.FC<FloatingStyleEditorProps> = ({
               <label className="checkbox-label">
                 <input
                   type="checkbox"
-                  checked={element.autoplay || false}
+                  checked={selectedElement.autoplay || false}
                   onChange={(e) => updateAttribute('autoplay', e.target.checked)}
                 />
                 Autoplay
@@ -401,7 +405,7 @@ const FloatingStyleEditor: React.FC<FloatingStyleEditorProps> = ({
               <label className="checkbox-label">
                 <input
                   type="checkbox"
-                  checked={element.loop || false}
+                  checked={selectedElement.loop || false}
                   onChange={(e) => updateAttribute('loop', e.target.checked)}
                 />
                 Loop
@@ -410,7 +414,7 @@ const FloatingStyleEditor: React.FC<FloatingStyleEditorProps> = ({
               <label className="checkbox-label">
                 <input
                   type="checkbox"
-                  checked={element.muted || false}
+                  checked={selectedElement.muted || false}
                   onChange={(e) => updateAttribute('muted', e.target.checked)}
                 />
                 Muted
@@ -419,7 +423,7 @@ const FloatingStyleEditor: React.FC<FloatingStyleEditorProps> = ({
               <label className="checkbox-label">
                 <input
                   type="checkbox"
-                  checked={element.controls || true}
+                  checked={selectedElement.controls || true}
                   onChange={(e) => updateAttribute('controls', e.target.checked)}
                 />
                 Show Controls
@@ -429,7 +433,7 @@ const FloatingStyleEditor: React.FC<FloatingStyleEditorProps> = ({
 
           {/* Add object-fit property */}
           {renderSelect('Video Fit', 'objectFit',
-            element.style.objectFit !== undefined ? element.style.objectFit : 'cover', [
+            selectedElement.style.objectFit !== undefined ? selectedElement.style.objectFit : 'cover', [
             { value: 'cover', label: 'Cover' },
             { value: 'contain', label: 'Contain' },
             { value: 'fill', label: 'Fill' },
@@ -448,12 +452,12 @@ const FloatingStyleEditor: React.FC<FloatingStyleEditorProps> = ({
         <h4>Transform</h4>
         {/* Rotation control */}
         {renderNumberInput('Rotation', 'rotate',
-          element.style.rotate !== undefined ? element.style.rotate : 0,
+          selectedElement.style.rotate !== undefined ? selectedElement.style.rotate : 0,
           0, 360, 1, 'deg')}
 
         {/* Scale control */}
         {renderNumberInput('Scale', 'scale',
-          element.style.scale !== undefined ? element.style.scale : 1,
+          selectedElement.style.scale !== undefined ? selectedElement.style.scale : 1,
           0.1, 3, 0.1, '')}
       </div>
 
@@ -461,24 +465,24 @@ const FloatingStyleEditor: React.FC<FloatingStyleEditorProps> = ({
         <h4>Filters</h4>
         {/* Blur filter - updated to use direct property */}
         {renderNumberInput('Blur', 'blur',
-          element.style.blur !== undefined ? element.style.blur : 0,
+          selectedElement.style.blur !== undefined ? selectedElement.style.blur : 0,
           0, 20, 0.5, 'px')}
 
         {/* Brightness filter - updated to use direct property */}
         {renderNumberInput('Brightness', 'brightness',
-          element.style.brightness !== undefined ? element.style.brightness : 100,
+          selectedElement.style.brightness !== undefined ? selectedElement.style.brightness : 100,
           0, 200, 5, '%')}
 
         {/* Contrast filter - updated to use direct property */}
         {renderNumberInput('Contrast', 'contrast',
-          element.style.contrast !== undefined ? element.style.contrast : 100,
+          selectedElement.style.contrast !== undefined ? selectedElement.style.contrast : 100,
           0, 200, 5, '%')}
       </div>
 
       <div className="control-group">
         <h4>Hover Animation</h4>
         {renderSelect('Effect', 'animation.hover',
-          element.animation?.hover || 'none', [
+          selectedElement.animation?.hover || 'none', [
           { value: 'none', label: 'None' },
           { value: 'bg-color', label: 'Background Color' },
           { value: 'text-color', label: 'Text Color' },
@@ -488,40 +492,40 @@ const FloatingStyleEditor: React.FC<FloatingStyleEditorProps> = ({
           { value: 'border', label: 'Add Border' }
         ])}
 
-        {element.animation?.hover === 'bg-color' && (
+        {selectedElement.animation?.hover === 'bg-color' && (
           renderColorPicker('Background Color', 'animation.hoverBgColor',
-            element.animation?.hoverBgColor || '#3498db')
+            selectedElement.animation?.hoverBgColor || '#3498db')
         )}
 
-        {element.animation?.hover === 'text-color' && (
+        {selectedElement.animation?.hover === 'text-color' && (
           renderColorPicker('Text Color', 'animation.hoverTextColor',
-            element.animation?.hoverTextColor || '#ffffff')
+            selectedElement.animation?.hoverTextColor || '#ffffff')
         )}
 
-        {element.animation?.hover === 'border' && (
+        {selectedElement.animation?.hover === 'border' && (
           renderColorPicker('Border Color', 'animation.hoverBorderColor',
-            element.animation?.hoverBorderColor || '#3498db')
+            selectedElement.animation?.hoverBorderColor || '#3498db')
         )}
       </div>
 
       <div className="control-group">
         <h4>Click Animation</h4>
         {renderSelect('Effect', 'animation.click',
-          element.animation?.click || 'none', [
+          selectedElement.animation?.click || 'none', [
           { value: 'none', label: 'None' },
           { value: 'bg-color', label: 'Background Color' },
           { value: 'text-color', label: 'Text Color' },
           { value: 'scale-down', label: 'Scale Down' }
         ])}
 
-        {element.animation?.click === 'bg-color' && (
+        {selectedElement.animation?.click === 'bg-color' && (
           renderColorPicker('Background Color', 'animation.clickBgColor',
-            element.animation?.clickBgColor || '#2980b9')
+            selectedElement.animation?.clickBgColor || '#2980b9')
         )}
 
-        {element.animation?.click === 'text-color' && (
+        {selectedElement.animation?.click === 'text-color' && (
           renderColorPicker('Text Color', 'animation.clickTextColor',
-            element.animation?.clickTextColor || '#ffffff')
+            selectedElement.animation?.clickTextColor || '#ffffff')
         )}
       </div>
     </div>
@@ -544,8 +548,8 @@ const FloatingStyleEditor: React.FC<FloatingStyleEditorProps> = ({
       }}
     >
       <div className="editor-header">
-        <h3>{element.type.charAt(0).toUpperCase() + element.type.slice(1)} Properties</h3>
-        <button className="close-button" onClick={onClose}>×</button>
+        <h3>{selectedElement.type.charAt(0).toUpperCase() + selectedElement.type.slice(1)} Properties</h3>
+        <button className="close-button" onClick={closeStyleEditor}>×</button>
       </div>
 
       <div className="editor-tabs">
@@ -579,7 +583,7 @@ const FloatingStyleEditor: React.FC<FloatingStyleEditorProps> = ({
         {activeTab === 'style' && renderStyleTab()}
         {activeTab === 'content' && renderContentTab()}
         {activeTab === 'effects' && renderEffectsTab()}
-        {activeTab === 'animation' && <AnimationEditor element={element} onUpdateElement={onUpdateElement} />}
+        {activeTab === 'animation' && <AnimationEditor element={selectedElement} onUpdateElement={updateElement} />}
       </div>
 
       <style jsx>{`

@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { ElementRendererProps } from '../types/template';
+import { useDesigner } from '../contexts/DesignerContext';
+import { Element } from '../types/template';
 import ShapeElement from './elements/ShapeElement';
 import ButtonElement from './elements/ButtonElement';
 import HeadingElement from './elements/HeadingElement';
@@ -9,17 +10,25 @@ import VideoElement from './elements/VideoElement';
 import ElementStyleService from '../services/elementStyleService';
 import CanvasCalculationService from '../services/canvasCalculationService';
 
+interface ElementRendererProps {
+  element: Element;
+  isInGroup?: boolean;
+}
+
 const ElementRenderer: React.FC<ElementRendererProps> = ({
   element,
-  onSelect,
-  isSelected,
-  onUpdateElement,
-  canvasRef,
-  onContextMenu,
-  onOpenStyleEditor,
-  isInGroup
+  isInGroup = false
 }) => {
-  const { id, type,href, target } = element;
+  const {
+    selectedElementIds,
+    canvasRef,
+    selectElement,
+    updateElement,
+    openContextMenu,
+    openStyleEditor
+  } = useDesigner();
+
+  const { id, type, href, target } = element;
   const elementRef = useRef<HTMLDivElement>(null);
   const [isDragging, setIsDragging] = useState<boolean>(false);
   const [isResizing, setIsResizing] = useState<boolean>(false);
@@ -29,6 +38,8 @@ const ElementRenderer: React.FC<ElementRendererProps> = ({
   const [initialMousePosition, setInitialMousePosition] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   const [isHovered, setIsHovered] = useState<boolean>(false);
   const [isActive, setIsActive] = useState<boolean>(false);
+
+  const isSelected = selectedElementIds.includes(id);
 
   // Generate element style using the service
   const elementStyle = ElementStyleService.generateElementStyle(element, {
@@ -46,162 +57,160 @@ const ElementRenderer: React.FC<ElementRendererProps> = ({
   };
 
   // Event handlers for drag, resize, click, hover...
-  const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
-  if (e.button !== 0) return;
-  
-  if (isInGroup) {
-    e.stopPropagation();
-    const isMultiSelect = e.shiftKey || e.ctrlKey || e.metaKey;
-    onSelect(isMultiSelect);
-    return;
-  }
-  
-  e.preventDefault();
-  e.stopPropagation();
-  
-  const isMultiSelect = e.shiftKey || e.ctrlKey || e.metaKey;
-  onSelect(isMultiSelect);
-  
-  setIsDragging(true);
-  
-  // Use service for coordinate conversion
-  if (elementRef.current && canvasRef.current) {
-    const canvasCoords = CanvasCalculationService.screenToCanvas(
-      e.clientX, 
-      e.clientY, 
-      canvasRef.current
-    );
+  const handleMouseDown = (e:React.MouseEvent<HTMLDivElement>) => {
+    if (e.button !== 0) return;
     
-    const elementBounds = CanvasCalculationService.getElementBounds(element);
-    setDragOffset({
-      x: canvasCoords.x - elementBounds.x,
-      y: canvasCoords.y - elementBounds.y
-    });
-  }
-};
+    if (isInGroup) {
+      e.stopPropagation();
+      const isMultiSelect = e.shiftKey || e.ctrlKey || e.metaKey;
+      selectElement(element, isMultiSelect);
+      return;
+    }
+    
+    e.preventDefault();
+    e.stopPropagation();
+    
+    const isMultiSelect = e.shiftKey || e.ctrlKey || e.metaKey;
+    selectElement(element, isMultiSelect);
+    
+    setIsDragging(true);
+    
+    // Use service for coordinate conversion
+    if (elementRef.current && canvasRef.current) {
+      const canvasCoords = CanvasCalculationService.screenToCanvas(
+        e.clientX, 
+        e.clientY, 
+        canvasRef.current
+      );
+      
+      const elementBounds = CanvasCalculationService.getElementBounds(element);
+      setDragOffset({
+        x: canvasCoords.x - elementBounds.x,
+        y: canvasCoords.y - elementBounds.y
+      });
+    }
+  };
 
   // Handle mouse move for dragging
   const handleMouseMove = (e: MouseEvent) => {
-  if (!canvasRef.current || isInGroup) return;
+    if (!canvasRef.current || isInGroup) return;
 
-  if (isDragging) {
-    const canvasCoords = CanvasCalculationService.screenToCanvas(
-      e.clientX, 
-      e.clientY, 
-      canvasRef.current
-    );
-    
-    let newX = canvasCoords.x - dragOffset.x;
-    let newY = canvasCoords.y - dragOffset.y;
-    
-    // Apply grid snapping if enabled
-    const gridSize = 10; // Get from canvas settings
-    const snappedPosition = CanvasCalculationService.snapToGrid(
-      { x: newX, y: newY }, 
-      gridSize
-    );
-    
-    // Apply smart guides snapping
-    const tempElement = {
-      ...element,
-      style: { ...element.style, x: snappedPosition.x, y: snappedPosition.y }
-    };
-    
-    // Get other elements for snapping (you'll need to pass this from parent)
-    const otherElements: Array<ElementRendererProps['element']> = [];
-    const snapGuides = CanvasCalculationService.calculateSnapGuides(
-      tempElement,
-      otherElements,
-      5 // snap threshold
-    );
-    
-    if (snapGuides.snappedPosition) {
-      newX = snapGuides.snappedPosition.x;
-      newY = snapGuides.snappedPosition.y;
+    if (isDragging) {
+      const canvasCoords = CanvasCalculationService.screenToCanvas(
+        e.clientX, 
+        e.clientY, 
+        canvasRef.current
+      );
+      
+      let newX = canvasCoords.x - dragOffset.x;
+      let newY = canvasCoords.y - dragOffset.y;
+      
+      // Apply grid snapping if enabled
+      const gridSize = 10; // Get from canvas settings
+      const snappedPosition = CanvasCalculationService.snapToGrid(
+        { x: newX, y: newY }, 
+        gridSize
+      );
+      
+      // Apply smart guides snapping
+      const tempElement = {
+        ...element,
+        style: { ...element.style, x: snappedPosition.x, y: snappedPosition.y }
+      };
+      
+      // Get other elements for snapping (you'll need to pass this from parent)
+      const otherElements: Element[] = [];
+      const snapGuides = CanvasCalculationService.calculateSnapGuides(
+        tempElement,
+        otherElements,
+        5 // snap threshold
+      );
+      
+      if (snapGuides.snappedPosition) {
+        newX = snapGuides.snappedPosition.x;
+        newY = snapGuides.snappedPosition.y;
+      }
+      
+      if (elementRef.current) {
+        elementRef.current.style.left = `${newX}px`;
+        elementRef.current.style.top = `${newY}px`;
+      }
+    } else if (isResizing && resizeHandle) {
+      const canvasCoords = CanvasCalculationService.screenToCanvas(
+        e.clientX, 
+        e.clientY, 
+        canvasRef.current
+      );
+      
+      // Use service for resize calculations
+      const newBounds = CanvasCalculationService.calculateResizeConstraints(
+        element,
+        resizeHandle,
+        canvasCoords,
+        initialSize,
+        initialMousePosition,
+        { width: 20, height: 20 }, // min size
+        element.type === 'image' ? 16/9 : undefined // aspect ratio for images
+      );
+      
+      // Constrain to canvas
+      const canvasRect = canvasRef.current.getBoundingClientRect();
+      const constrainedBounds = CanvasCalculationService.constrainToCanvas(
+        newBounds,
+        { width: canvasRect.width, height: canvasRect.height }
+      );
+      
+      if (elementRef.current) {
+        elementRef.current.style.width = `${constrainedBounds.width}px`;
+        elementRef.current.style.height = `${constrainedBounds.height}px`;
+        elementRef.current.style.left = `${constrainedBounds.x}px`;
+        elementRef.current.style.top = `${constrainedBounds.y}px`;
+      }
     }
-    
-    if (elementRef.current) {
-      elementRef.current.style.left = `${newX}px`;
-      elementRef.current.style.top = `${newY}px`;
-    }
-  } else if (isResizing && resizeHandle) {
-    const canvasCoords = CanvasCalculationService.screenToCanvas(
-      e.clientX, 
-      e.clientY, 
-      canvasRef.current
-    );
-    
-    // Use service for resize calculations
-    const newBounds = CanvasCalculationService.calculateResizeConstraints(
-      element,
-      resizeHandle,
-      canvasCoords,
-      initialSize,
-      initialMousePosition,
-      { width: 20, height: 20 }, // min size
-      element.type === 'image' ? 16/9 : undefined // aspect ratio for images
-    );
-    
-    // Constrain to canvas
-    const canvasRect = canvasRef.current.getBoundingClientRect();
-    const constrainedBounds = CanvasCalculationService.constrainToCanvas(
-      newBounds,
-      { width: canvasRect.width, height: canvasRect.height }
-    );
-    
-    if (elementRef.current) {
-      elementRef.current.style.width = `${constrainedBounds.width}px`;
-      elementRef.current.style.height = `${constrainedBounds.height}px`;
-      elementRef.current.style.left = `${constrainedBounds.x}px`;
-      elementRef.current.style.top = `${constrainedBounds.y}px`;
-    }
-  }
-};
-
+  };
 
   // Handle mouse up to end dragging or resizing
-const handleMouseUp = () => {
-  if ((!isDragging && !isResizing) || isInGroup) return;
+  const handleMouseUp = () => {
+    if ((!isDragging && !isResizing) || isInGroup) return;
 
-  if (elementRef.current && canvasRef.current) {
-    const rect = elementRef.current.getBoundingClientRect();
-    const canvasRect = canvasRef.current.getBoundingClientRect();
-    
-    // Convert screen coordinates to canvas coordinates
-    const canvasCoords = CanvasCalculationService.screenToCanvas(
-      rect.left,
-      rect.top,
-      canvasRef.current
-    );
-    
-    // Constrain final position to canvas
-    const constrainedBounds = CanvasCalculationService.constrainToCanvas(
-      {
-        x: canvasCoords.x,
-        y: canvasCoords.y,
-        width: rect.width,
-        height: rect.height
-      },
-      { width: canvasRect.width, height: canvasRect.height }
-    );
+    if (elementRef.current && canvasRef.current) {
+      const rect = elementRef.current.getBoundingClientRect();
+      const canvasRect = canvasRef.current.getBoundingClientRect();
+      
+      // Convert screen coordinates to canvas coordinates
+      const canvasCoords = CanvasCalculationService.screenToCanvas(
+        rect.left,
+        rect.top,
+        canvasRef.current
+      );
+      
+      // Constrain final position to canvas
+      const constrainedBounds = CanvasCalculationService.constrainToCanvas(
+        {
+          x: canvasCoords.x,
+          y: canvasCoords.y,
+          width: rect.width,
+          height: rect.height
+        },
+        { width: canvasRect.width, height: canvasRect.height }
+      );
 
-    onUpdateElement({
-      ...element,
-      style: {
-        ...element.style,
-        x: constrainedBounds.x,
-        y: constrainedBounds.y,
-        width: constrainedBounds.width,
-        height: constrainedBounds.height
-      }
-    });
-  }
+      updateElement({
+        ...element,
+        style: {
+          ...element.style,
+          x: constrainedBounds.x,
+          y: constrainedBounds.y,
+          width: constrainedBounds.width,
+          height: constrainedBounds.height
+        }
+      });
+    }
 
-  setIsDragging(false);
-  setIsResizing(false);
-  setResizeHandle(null);
-};
-
+    setIsDragging(false);
+    setIsResizing(false);
+    setResizeHandle(null);
+  };
 
   // Handle resize start
   const handleResizeStart = (e: React.MouseEvent<HTMLDivElement>, handle: string) => {
@@ -233,8 +242,8 @@ const handleMouseUp = () => {
   };
 
   const handleClick = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (isSelected && onOpenStyleEditor) {
-      onOpenStyleEditor();
+    if (isSelected) {
+      openStyleEditor(element);
     }
     
     if (element.animation?.click) {
@@ -246,7 +255,7 @@ const handleMouseUp = () => {
   const handleContextMenu = (e: React.MouseEvent<HTMLDivElement>) => {
     e.preventDefault();
     e.stopPropagation();
-    onContextMenu(element, e.clientX, e.clientY);
+    openContextMenu(element, e.clientX, e.clientY);
   };
 
   const handleMouseEnter = () => {
@@ -266,7 +275,7 @@ const handleMouseUp = () => {
     };
   }, [isDragging, isResizing, resizeHandle]);
 
-   const renderResizeHandles = () => {
+  const renderResizeHandles = () => {
     if (!isSelected || isInGroup) return null;
     
     const handles = [
@@ -327,7 +336,7 @@ const handleMouseUp = () => {
     if (href) {
       return (
         <a 
-          href={""} 
+          href={href} 
           target={target || '_blank'} 
           rel="noopener noreferrer"
           style={{ 
@@ -345,26 +354,6 @@ const handleMouseUp = () => {
       );
     }
     return content;
-  };
-
-  // Add collision detection during drag
-  const checkCollisions = (newPosition: { x: number; y: number }) => {
-    const tempElement = {
-      ...element,
-      style: { ...element.style, x: newPosition.x, y: newPosition.y }
-    };
-    
-    const otherElements: ElementRendererProps['element'][] = []; // Get from props
-    const collisions = CanvasCalculationService.detectCollisions(
-      tempElement,
-      otherElements,
-      2 // tolerance
-    );
-    
-    // Highlight colliding elements or show warning
-    if (collisions.length > 0) {
-      console.log('Collision detected with:', collisions.map(el => el.id));
-    }
   };
 
   return (
@@ -387,3 +376,4 @@ const handleMouseUp = () => {
 };
 
 export default ElementRenderer;
+
