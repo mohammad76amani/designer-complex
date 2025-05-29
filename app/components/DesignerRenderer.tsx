@@ -31,7 +31,7 @@ const DesignerRenderer: React.FC<DesignerRendererProps> = ({ template, onTemplat
         ...template.sections,
         children: {
           ...template.sections.children,
-          sections: template.sections.children.sections.map(section => 
+          sections: template.sections.children.sections?.map(section => 
             section.type === 'designer' 
               ? {
                   ...section,
@@ -58,17 +58,17 @@ const DesignerRenderer: React.FC<DesignerRendererProps> = ({ template, onTemplat
         ...template.sections,
         children: {
           ...template.sections.children,
-          sections: template.sections.children.sections.map(section => 
+          sections: template.sections.children.sections?.map(section => 
             section.type === 'designer' 
               ? {
                   ...section,
                   blocks: {
                     ...section.blocks,
-                    setting: section.blocks.setting ? {
+                    setting: section.blocks?.setting ? {
                       ...section.blocks.setting,
                       canvasWidth: breakpoint
                     } : undefined,
-                    settings: section.blocks.settings ? {
+                    settings: section.blocks?.settings ? {
                       ...section.blocks.settings,
                       canvasWidth: breakpoint
                     } : undefined
@@ -92,17 +92,17 @@ const DesignerRenderer: React.FC<DesignerRendererProps> = ({ template, onTemplat
         ...template.sections,
         children: {
           ...template.sections.children,
-          sections: template.sections.children.sections.map(section => 
+          sections: template?.sections?.children?.sections?.map(section => 
             section.type === 'designer' 
               ? {
                   ...section,
                   blocks: {
                     ...section.blocks,
-                    setting: section.blocks.setting ? {
+                    setting: section.blocks?.setting ? {
                       ...section.blocks.setting,
                       canvasHeight: height
                     } : undefined,
-                    settings: section.blocks.settings ? {
+                    settings: section.blocks?.settings ? {
                       ...section.blocks.settings,
                       canvasHeight: height
                     } : undefined
@@ -118,7 +118,6 @@ const DesignerRenderer: React.FC<DesignerRendererProps> = ({ template, onTemplat
   };
 
   const handleHistoryChange = (elements: any[], selectedElementIds: string[], selectedElementId: string | null) => {
-    // Handle history state changes
     handleTemplateUpdate(elements);
   };
 
@@ -141,7 +140,7 @@ const DesignerRenderer: React.FC<DesignerRendererProps> = ({ template, onTemplat
           initialElements={initialElements}
           initialBreakpoint={settings?.canvasWidth === 'sm' ? 'sm' : 'lg'}
           initialBreakpoints={settings?.breakpoints || { sm: 400, lg: 1000 }}
-          initialCanvasHeight={initialCanvasHeight} // Pass initial canvas height
+          initialCanvasHeight={initialCanvasHeight}
           onTemplateUpdate={handleTemplateUpdate}
           onBreakpointChange={handleBreakpointChange}
           onCanvasHeightUpdate={handleCanvasHeightUpdate}
@@ -158,16 +157,107 @@ const DesignerContent: React.FC = () => {
     contextMenu, 
     showStyleEditor, 
     selectedElement,
+    selectedElementIds,
     canvasRef,
     clipboard,
+    elements,
     updateElement,
+    updateElements,
     closeStyleEditor,
     closeContextMenu,
     deleteElement,
-    setClipboard,
-    elements,
-    updateElements
+    setClipboard
   } = useDesigner();
+
+  // Group/Ungroup functionality
+  const handleGroup = () => {
+    const selectedElements = elements.filter(el => selectedElementIds.includes(el.id));
+    
+    if (selectedElements.length < 2) return;
+
+    // Calculate group bounds
+    const positions = selectedElements.map(el => ({
+      x: el.style.x,
+      y: el.style.y,
+      width: typeof el.style.width === 'number' ? el.style.width : parseFloat(el.style.width),
+      height: typeof el.style.height === 'number' ? el.style.height : parseFloat(el.style.height)
+    }));
+
+    const minX = Math.min(...positions.map(p => p.x));
+    const minY = Math.min(...positions.map(p => p.y));
+    const maxX = Math.max(...positions.map(p => p.x + p.width));
+    const maxY = Math.max(...positions.map(p => p.y + p.height));
+
+    const bounds = {
+      x: minX - 10,
+      y: minY - 10,
+      width: maxX - minX + 20,
+      height: maxY - minY + 20
+    };
+    
+    // Create new group element
+    const groupId = `group-${Date.now()}`;
+    const groupElement = {
+      id: groupId,
+      type: 'group' as const,
+      style: {
+        x: bounds.x,
+        y: bounds.y,
+        width: bounds.width,
+        height: bounds.height,
+        zIndex: Math.max(...selectedElements.map(el => el.style.zIndex || 0)) + 1
+      },
+      content: {},
+      parentId: undefined
+    };
+
+    // Update selected elements to be children of the group
+    const updatedElements = elements.map(el => {
+      if (selectedElementIds.includes(el.id)) {
+        return {
+          ...el,
+          parentId: groupId,
+          style: {
+            ...el.style,
+            x: el.style.x - bounds.x,
+            y: el.style.y - bounds.y
+          }
+        };
+      }
+      return el;
+    });
+
+    // Add the group element
+    const newElements = [...updatedElements, groupElement];
+    updateElements(newElements);
+    closeContextMenu();
+  };
+
+  const handleUngroup = () => {
+    if (!contextMenu.element || contextMenu.element.type !== 'group') return;
+
+    const groupElement = contextMenu.element;
+    const childElements = elements.filter(el => el.parentId === groupElement.id);
+    
+    // Update child elements to be top-level and adjust their positions
+    const updatedElements = elements.map(el => {
+      if (el.parentId === groupElement.id) {
+        return {
+          ...el,
+          parentId: undefined,
+          style: {
+            ...el.style,
+            x: el.style.x + groupElement.style.x,
+            y: el.style.y + groupElement.style.y
+          }
+        };
+      }
+      return el;
+    }).filter(el => el.id !== groupElement.id); // Remove the group element
+
+    updateElements(updatedElements);
+    closeContextMenu();
+  };
 
   // Context menu handlers
   const handleDelete = () => {
@@ -194,14 +284,10 @@ const DesignerContent: React.FC = () => {
 
   const handlePaste = () => {
     if (clipboard && canvasRef.current) {
-      // Get canvas position for coordinate adjustment
       const canvasRect = canvasRef.current.getBoundingClientRect();
-      
-      // Calculate the position relative to the canvas
       const canvasX = contextMenu.x - canvasRect.left;
       const canvasY = contextMenu.y - canvasRect.top;
       
-      // Create new element from clipboard
       const newElement = {
         ...clipboard,
         id: `${clipboard.type}-${Date.now()}`,
@@ -213,10 +299,8 @@ const DesignerContent: React.FC = () => {
         }
       };
       
-      // Add the new element to the canvas
       const newElements = [...elements, newElement];
       updateElements(newElements);
-      
       closeContextMenu();
     }
   };
@@ -242,7 +326,7 @@ const DesignerContent: React.FC = () => {
         <ResponsiveCanvasToolbar />
         <CanvasRenderer />
 
-        {/* Render context menu when shown */}
+        {/* Enhanced context menu with group/ungroup options */}
         {contextMenu.show && (
           <ContextMenu 
             x={contextMenu.x}
@@ -252,6 +336,8 @@ const DesignerContent: React.FC = () => {
             onCopy={handleCopy}
             onCut={handleCut}
             onPaste={handlePaste}
+            onGroup={selectedElementIds.length > 1 ? handleGroup : undefined}
+            onUngroup={contextMenu.element?.type === 'group' ? handleUngroup : undefined}
             canPaste={clipboard !== null}
           />
         )}

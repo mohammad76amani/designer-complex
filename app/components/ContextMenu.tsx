@@ -1,139 +1,173 @@
-import React, { useEffect, useRef } from 'react';
-import { useDesigner } from '../contexts/DesignerContext';
+import React from 'react';
 
-const ContextMenu: React.FC = () => {
-  const {
-    contextMenu,
-    clipboard,
-    closeContextMenu,
-    deleteElement,
-    setClipboard
-  } = useDesigner();
-  
-  const menuRef = useRef<HTMLDivElement>(null);
-  
-  if (!contextMenu.show) return null;
-  
-  const { x, y, element } = contextMenu;
-  
-  // Adjust position to ensure menu stays within viewport
-  const adjustedX = Math.min(x, window.innerWidth - 150);
-  const adjustedY = Math.min(y, window.innerHeight - 150);
-  
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
-        closeContextMenu();
-      }
-    };
-    
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, [closeContextMenu]);
-  
-  const handleCopy = () => {
-    if (element) {
-      setClipboard(element);
-      closeContextMenu();
-    }
-  };
-  
-  const handleCut = () => {
-    if (element) {
-      setClipboard(element);
-      deleteElement(element.id);
-      closeContextMenu();
-    }
-  };
-  
-  const handleDelete = () => {
-    if (element) {
-      deleteElement(element.id);
-      closeContextMenu();
-    }
-  };
-  
-  const menuStyle: React.CSSProperties = {
-    position: 'fixed',
-    top: `${adjustedY}px`,
-    left: `${adjustedX}px`,
-    backgroundColor: 'white',
-    boxShadow: '0 2px 10px rgba(0,0,0,0.2)',
-    borderRadius: '4px',
-    padding: '5px 0',
-    zIndex: 1000,
-    minWidth: '150px',
-  };
-  
-  const menuItemStyle: React.CSSProperties = {
-    padding: '8px 15px',
-    cursor: 'pointer',
-    display: 'flex',
-    alignItems: 'center',
-    gap: '8px',
-    fontSize: '14px',
-  };
-  
-  const menuItemHoverStyle = {
-    backgroundColor: '#f5f5f5',
-  };
-  
-  const disabledItemStyle: React.CSSProperties = {
-    ...menuItemStyle,
-    opacity: 0.5,
-    cursor: 'not-allowed',
-  };
-  
+interface ContextMenuProps {
+  x: number;
+  y: number;
+  onClose: () => void;
+  onDelete: () => void;
+  onCopy: () => void;
+  onCut: () => void;
+  onPaste: () => void;
+  onGroup?: () => void;
+  onUngroup?: () => void;
+  canPaste: boolean;
+  canGroup?: boolean;
+  canUngroup?: boolean;
+}
+
+const ContextMenu: React.FC<ContextMenuProps> = ({
+  x,
+  y,
+  onClose,
+  onDelete,
+  onCopy,
+  onCut,
+  onPaste,
+  onGroup,
+  onUngroup,
+  canPaste,
+  canGroup = false,
+  canUngroup = false
+}) => {
   return (
-    <div ref={menuRef} style={menuStyle} className="context-menu">
-      <div 
-        style={menuItemStyle} 
-        className="context-menu-item"
-
-        onClick={handleCopy}
-        onMouseEnter={(e) => Object.assign(e.currentTarget.style, menuItemHoverStyle)}
-        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = ''}
-      >
-        <span style={{ fontSize: '16px' }}>📋</span> Copy
-      </div>
-      <div 
-        style={menuItemStyle} 
-        className="context-menu-item"
-
-        onClick={handleCut}
-        onMouseEnter={(e) => Object.assign(e.currentTarget.style, menuItemHoverStyle)}
-        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = ''}
-      >
-        <span style={{ fontSize: '16px' }}>✂️</span> Cut
-      </div>
-      {clipboard && (
-        <div 
-          style={menuItemStyle} 
-          className="context-menu-item"
-          onClick={handleCopy}
-          onMouseEnter={(e) => Object.assign(e.currentTarget.style, menuItemHoverStyle)}
-          onMouseLeave={(e) => e.currentTarget.style.backgroundColor = ''}
-        >
-          <span style={{ fontSize: '16px' }}>📌</span> Paste
-        </div>
-      )}
-      <div style={{ height: '1px', backgroundColor: '#e0e0e0', margin: '5px 0' }} />
-      <div 
-        style={{...menuItemStyle, color: '#e53935'}} 
-        className="context-menu-item"
-
-        onClick={handleDelete}
-        onMouseEnter={(e) => Object.assign(e.currentTarget.style, {...menuItemHoverStyle, color: '#e53935'})}
-        onMouseLeave={(e) => {
-          e.currentTarget.style.backgroundColor = '';
-          e.currentTarget.style.color = '#e53935';
+    <>
+      <div
+        style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          zIndex: 999
         }}
-      >
-        <span style={{ fontSize: '16px' }}>🗑️</span> Delete
+        onClick={onClose}
+      />
+      
+      <div className="context-menu">
+        <div className="context-menu-item" onClick={onCopy}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect x="9" y="9" width="13" height="13" rx="2" stroke="currentColor" strokeWidth="2"/>
+            <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" stroke="currentColor" strokeWidth="2"/>
+          </svg>
+          Copy
+        </div>
+        
+        <div className="context-menu-item" onClick={onCut}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="6" cy="6" r="3" stroke="currentColor" strokeWidth="2"/>
+            <circle cx="18" cy="18" r="3" stroke="currentColor" strokeWidth="2"/>
+            <path d="M14.5 9.5L9.5 14.5M21 3L9 15" stroke="currentColor" strokeWidth="2"/>
+          </svg>
+          Cut
+        </div>
+        
+        <div 
+          className={`context-menu-item ${!canPaste ? 'disabled' : ''}`} 
+          onClick={canPaste ? onPaste : undefined}
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M16 4h2a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h2" stroke="currentColor" strokeWidth="2"/>
+            <rect x="8" y="2" width="8" height="4" rx="1" stroke="currentColor" strokeWidth="2"/>
+          </svg>
+          Paste
+        </div>
+        
+        {(canGroup || canUngroup) && <div className="context-menu-separator" />}
+        
+        {canGroup && onGroup && (
+          <div className="context-menu-item" onClick={onGroup}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <rect x="3" y="3" width="7" height="7" rx="1" stroke="currentColor" strokeWidth="2"/>
+              <rect x="14" y="3" width="7" height="7" rx="1" stroke="currentColor" strokeWidth="2"/>
+              <rect x="3" y="14" width="7" height="7" rx="1" stroke="currentColor" strokeWidth="2"/>
+              <rect x="14" y="14" width="7" height="7" rx="1" stroke="currentColor" strokeWidth="2"/>
+              <path d="M11 6H13M11 18H13M6 11V13M18 11V13" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+            </svg>
+            Group
+          </div>
+        )}
+        
+        {canUngroup && onUngroup && (
+          <div className="context-menu-item" onClick={onUngroup}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <rect x="3" y="3" width="7" height="7" rx="1" stroke="currentColor" strokeWidth="2"/>
+              <rect x="14" y="3" width="7" height="7" rx="1" stroke="currentColor" strokeWidth="2"/>
+              <rect x="3" y="14" width="7" height="7" rx="1" stroke="currentColor" strokeWidth="2"/>
+              <rect x="14" y="14" width="7" height="7" rx="1" stroke="currentColor" strokeWidth="2"/>
+              <path d="M9 9L15 15M15 9L9 15" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+            </svg>
+            Ungroup
+          </div>
+        )}
+        
+        <div className="context-menu-separator" />
+        
+        <div className="context-menu-item delete" onClick={onDelete}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2" stroke="currentColor" strokeWidth="2"/>
+          </svg>
+          Delete
+        </div>
+
+        <style jsx>{`
+          .context-menu {
+            position: fixed;
+            top: ${y}px;
+            left: ${x}px;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+            padding: 4px;
+            min-width: 160px;
+            z-index: 1000;
+            font-size: 14px;
+          }
+
+          .context-menu-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.15s ease;
+            color: #333;
+          }
+
+          .context-menu-item:hover {
+            background-color: #f5f5f5;
+          }
+
+          .context-menu-item.disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+          }
+
+          .context-menu-item.disabled:hover {
+            background-color: transparent;
+          }
+
+          .context-menu-item.delete {
+            color: #e74c3c;
+          }
+
+          .context-menu-item.delete:hover {
+            background-color: #fdf2f2;
+          }
+
+          .context-menu-separator {
+            height: 1px;
+            background-color: #e9ecef;
+            margin: 4px 0;
+          }
+
+          .context-menu-item svg {
+            flex-shrink: 0;
+          }
+        `}</style>
       </div>
-    </div>
+    </>
   );
 };
+
 export default ContextMenu;

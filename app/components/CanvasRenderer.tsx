@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useDesigner } from '../contexts/DesignerContext';
 import ElementRenderer from './ElementRenderer';
+import FloatingGroupButton from './FloatingGroupButton';
 import { Element } from '../types/template';
 import ElementManagementService from '../services/elementManagementService';
 import CanvasCalculationService from '../services/canvasCalculationService';
@@ -260,11 +261,65 @@ const CanvasRenderer: React.FC = () => {
         const finalY = rect.top - canvasRect.top;
         const finalWidth = rect.width;
         const finalHeight = rect.height;
-
-        const updatedGroup = ElementManagementService.resizeElement(
-          groupElement,
-          { width: finalWidth, height: finalHeight },
-          { x: finalX, y: finalY }
+        
+      
+        // Calculate scale factors for child elements
+        const scaleX = finalWidth / (typeof groupElement.style.width === 'number' ? 
+          groupElement.style.width : parseFloat(groupElement.style.width as string));
+        const scaleY = finalHeight / (typeof groupElement.style.height === 'number' ? 
+          groupElement.style.height : parseFloat(groupElement.style.height as string));
+        
+        // Update the group with the new position and size
+        const updatedGroup = {
+          ...groupElement,
+          style: {
+            ...groupElement.style,
+            x: finalX,
+            y: finalY,
+            width: finalWidth,
+            height: finalHeight
+          }
+        };
+        // Update all child elements to maintain their relative positions
+        const updatedElements = elements.map(el => {
+          if (el.parentId === activeGroupId) {
+            // If resizing, scale the element's position and size
+            if (isResizingGroup) {
+              // Calculate new position based on scale factors
+              const newX = el.style.x * scaleX;
+              const newY = el.style.y * scaleY;
+              
+              // Calculate new size based on scale factors
+              const newWidth = typeof el.style.width === 'number' 
+                ? el.style.width * scaleX 
+                : parseFloat(el.style.width as string) * scaleX;
+              
+              const newHeight = typeof el.style.height === 'number' 
+                ? el.style.height * scaleY 
+                : parseFloat(el.style.height as string) * scaleY;
+              
+              return {
+                ...el,
+                style: {
+                  ...el.style,
+                  x: newX,
+                  y: newY,
+                  width: newWidth,
+                  height: newHeight
+                }
+              };
+            } 
+            // If dragging, just move the element with the group
+            else if (isDraggingGroup) {
+              return el; // Position is relative to group, no need to change
+            }
+          }
+          return el;
+        });
+        
+        // Update the elements array with the updated group and child elements
+        const finalElements = updatedElements.map(el => 
+          el.id === activeGroupId ? updatedGroup : el
         );
 
         if (isResizingGroup) {
@@ -566,6 +621,9 @@ const CanvasRenderer: React.FC = () => {
             />
           );
         })}
+
+        {/* Add the floating group button */}
+        <FloatingGroupButton />
       </div>
       
       {/* Canvas height resize handle */}

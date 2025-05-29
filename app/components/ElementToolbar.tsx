@@ -85,7 +85,6 @@ const ElementToolbar: React.FC = () => {
           >
             {element.icon}
           </button>
-          
           {hoveredElement === element.type && (
             <div className="element-tooltip">
               {element.label}
