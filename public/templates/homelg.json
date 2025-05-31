@@ -97,7 +97,7 @@
                   "fontSize": 16,
                   "fontWeight": "normal",
                   "color": "#000000",
-                  "backgroundColor": "rgba(109, 59, 59, 1)",
+                  "backgroundColor": "rgba(109, 59, 59, 0",
                   "borderRadius": 23,
                   "padding": 0,
                   "textAlign": "right",
