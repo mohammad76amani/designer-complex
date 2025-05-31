@@ -183,6 +183,7 @@ export interface Element {
   locked?: boolean;
   // Simple animation properties for the AnimationEditor
   animation?: SimpleAnimation;
+  
 }
 
 /**
@@ -316,7 +317,6 @@ export interface DesignerRendererProps {
  */
 export interface ElementRendererProps {
   element: Element;
-  // All other props removed - will come from context
 }
 
 
@@ -372,14 +372,7 @@ export interface GroupContainerProps {
 }
 
 
-export interface ResponsiveCanvasToolbarProps {
-  // All props removed - will come from context
-}
 
-
-export interface ElementToolbarProps {
-  // onAddElement removed - will come from context
-}
 
 /**
  * Props for shape selector component
@@ -452,4 +445,8 @@ export interface DesignerContextType {
   // Style editor operations
   openStyleEditor: (element: Element) => void;
   closeStyleEditor: () => void;
+}
+
+export interface ElementToolbarProps {
+  onAddElement: (elementType: string) => void;
 }

@@ -1,4 +1,4 @@
-import { Element, ElementStyle } from '../types/template';
+import { Element } from '../types/template';
 
 /**
  * Service for generating element styles and CSS properties
