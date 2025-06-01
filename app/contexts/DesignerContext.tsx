@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useRef, useState, useCallback } from 'react';
-import { DesignerContextType, Element } from '@/app/types/template';
+import { DesignerContextType, DesignerProviderProps, Element } from '@/app/types/template';
 import ElementFactoryService from '../services/elementFactoryService';
 import ElementManagementService from '../services/elementManagementService';
 
@@ -16,8 +16,7 @@ export const useDesigner = () => {
 
 
 
-export const DesignerProvider: React.FC<DesignerProviderProps> = ({
-  children,
+export const DesignerProvider: React.FC<DesignerProviderProps> = ({  children,
   initialElements,
   initialBreakpoint,
   initialBreakpoints,
@@ -108,8 +107,8 @@ export const DesignerProvider: React.FC<DesignerProviderProps> = ({
     setContextMenu(prev => ({ ...prev, show: false }));
   }, [elements]);
   
-  const addElement = useCallback((elementType: string) => {
-    console.log('Adding element:', elementType); // Debug log
+  const addElement = useCallback((elementType: string, shapeType?: string) => {
+    console.log('Adding element:', elementType, 'shapeType:', shapeType); // Debug log
     
     // Get canvas dimensions
     const canvasBounds = { width: canvasWidth, height: canvasHeight };
@@ -122,11 +121,12 @@ export const DesignerProvider: React.FC<DesignerProviderProps> = ({
     console.log('Center position:', { x: centerX, y: centerY }); // Debug log
     
     try {
-      // Create element using factory service
+      // Create element using factory service with shapeType
       const newElement = ElementFactoryService.createElement(
         elementType,
         { x: centerX, y: centerY },
-        elements.length
+        elements.length,
+        shapeType // Pass the shapeType parameter
       );
       
       console.log('Created element:', newElement); // Debug log

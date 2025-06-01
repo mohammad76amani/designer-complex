@@ -18,13 +18,33 @@ export class ElementManagementService {
         x: position.x,
         y: position.y,
         fontSize: 16,
-        fontWeight: 'normal' as const,
+        fontWeight: '400' as string,
         color: '#000000',
         backgroundColor: 'transparent',
         borderRadius: 0,
         padding: 0,
         textAlign: 'left' as const,
-        zIndex: existingElementsCount + 1
+        zIndex: existingElementsCount + 1,
+        // Add all missing default properties
+        opacity: 1,
+        borderWidth: 0,
+        borderStyle: 'none' as const,
+        borderColor: '#000000',
+        letterSpacing: 0,
+        lineHeight: 1.5,
+        boxShadowBlur: 0,
+        boxShadowSpread: 0,
+        boxShadowColor: 'rgba(0,0,0,0.2)',
+        rotate: 0,
+        blur: 0,
+        brightness: 100,
+        contrast: 100,
+        objectFit: 'cover' as const
+      },
+      // Add default animation object
+      animation: {
+        hover: 'none' as const,
+        click: 'none' as const
       }
     };
 
@@ -34,13 +54,23 @@ export class ElementManagementService {
           id: `heading-${Date.now()}`,
           type: 'heading',
           content: 'New Heading',
+          href: '',
+          target: '_self',
+          src: '',
+          alt: '',
+          videoSrc: '',
+          autoplay: false,
+          loop: false,
+          muted: false,
+          controls: true,
+          shapeType: 'rectangle',
           ...baseElement,
           style: {
             ...baseElement.style,
             width: 200,
             height: 50,
             fontSize: 24,
-            fontWeight: 'bold'
+            fontWeight: '700'
           }
         };
 
@@ -49,6 +79,16 @@ export class ElementManagementService {
           id: `paragraph-${Date.now()}`,
           type: 'paragraph',
           content: 'New paragraph text. Double-click to edit.',
+          href: '',
+          target: '_self',
+          src: '',
+          alt: '',
+          videoSrc: '',
+          autoplay: false,
+          loop: false,
+          muted: false,
+          controls: true,
+          shapeType: 'rectangle',
           ...baseElement,
           style: {
             ...baseElement.style,
@@ -62,13 +102,13 @@ export class ElementManagementService {
           id: `button-${Date.now()}`,
           type: 'button',
           content: 'Click Me',
-          href: '#',
+          href: '',
           ...baseElement,
           style: {
             ...baseElement.style,
             width: 120,
             height: 40,
-            fontWeight: 'bold',
+            fontWeight: '600',
             color: '#ffffff',
             backgroundColor: '#3498db',
             borderRadius: 4,
@@ -281,63 +321,169 @@ export class ElementManagementService {
   /**
    * Create a group from selected elements
    */
-  static createGroup(elements: Element[], selectedElementIds: string[]): {
-    updatedElements: Element[];
-    groupElement: Element;
-  } {
-    if (selectedElementIds.length <= 1) {
-      throw new Error('Need at least 2 elements to create a group');
-    }
+/**
+ * Create a group from selected elements
+ */
+static createGroup(elements: Element[], selectedElementIds: string[]): {
+  updatedElements: Element[];
+  groupElement: Element;
+} {
+  if (selectedElementIds.length <= 1) {
+    throw new Error('Need at least 2 elements to create a group');
+  }
 
-    const selectedElements = this.findElementsByIds(elements, selectedElementIds);
-    const boundingBox = this.calculateBoundingBox(selectedElements);
+  const selectedElements = this.findElementsByIds(elements, selectedElementIds);
+  
+  // Check if any selected element is already in a group or is a group itself
+  const invalidElements = selectedElements.filter(el => 
+    el.parentId || el.type === 'group'
+  );
+  
+  if (invalidElements.length > 0) {
+    const groupedElements = invalidElements.filter(el => el.parentId);
+    const groupElements = invalidElements.filter(el => el.type === 'group');
     
-    // Create group element
-    const groupId = `group-${Date.now()}`;
-    const groupElement: Element = {
-      id: groupId,
-      type: 'group',
-      content: '',
-      childIds: selectedElementIds,
-      style: {
-        x: boundingBox.minX,
-        y: boundingBox.minY,
-        width: boundingBox.width,
-        height: boundingBox.height,
-        fontSize: 16,
-        fontWeight: 'normal',
-        color: '#000000',
-        backgroundColor: 'transparent',
-        borderRadius: 0,
-        padding: 0,
-        textAlign: 'left',
-        zIndex: Math.max(...selectedElements.map(el => el.style.zIndex || 0)) + 1
-      }
-    };
+    let errorMessage = 'Cannot group the following elements:\n';
+    
+    if (groupedElements.length > 0) {
+      errorMessage += `- ${groupedElements.length} element(s) are already in a group\n`;
+    }
+    
+    if (groupElements.length > 0) {
+      errorMessage += `- ${groupElements.length} group(s) cannot be grouped again\n`;
+    }
+    
+    errorMessage += '\nPlease ungroup them first or select different elements.';
+    
+    throw new Error(errorMessage);
+  }
 
-    // Update child elements to reference their parent group and adjust positions
-    const updatedElements = elements.map(el => {
-      if (selectedElementIds.includes(el.id)) {
-        return {
-          ...el,
-          parentId: groupId,
-          style: {
-            ...el.style,
-            // Make position relative to the group
-            x: el.style.x - boundingBox.minX,
-            y: el.style.y - boundingBox.minY
-          }
-        };
-      }
-      return el;
-    });
+  const boundingBox = this.calculateBoundingBox(selectedElements);
+  
+  // Create group element
+  const groupId = `group-${Date.now()}`;
+  const groupElement: Element = {
+    id: groupId,
+    type: 'group',
+    content: '',
+    childIds: selectedElementIds,
+    style: {
+      x: boundingBox.minX,
+      y: boundingBox.minY,
+      width: boundingBox.width,
+      height: boundingBox.height,
+      fontSize: 16,
+      fontWeight: 'normal',
+      color: '#000000',
+      backgroundColor: 'transparent',
+      borderRadius: 0,
+      padding: 0,
+      textAlign: 'left',
+      zIndex: Math.max(...selectedElements.map(el => el.style.zIndex || 0)) + 1,
+      // Add all other required style properties with defaults
+      opacity: 1,
+      borderWidth: 0,
+      borderStyle: 'none',
+      borderColor: '#000000',
+      letterSpacing: 0,
+      lineHeight: 1.5,
+      boxShadowBlur: 0,
+      boxShadowSpread: 0,
+      boxShadowColor: 'rgba(0,0,0,0.2)',
+      rotate: 0,
+      blur: 0,
+      brightness: 100,
+      contrast: 100,
+      objectFit: 'cover'
+    },
+    animation: {
+      hover: 'none',
+      click: 'none'
+    },
+    // Add default properties
+    href: '',
+    target: '_self',
+    src: '',
+    alt: '',
+    videoSrc: '',
+    autoplay: false,
+    loop: false,
+    muted: false,
+    controls: true,
+    shapeType: 'rectangle'
+  };
 
-    // Add the group element
+  // Update child elements to reference their parent group and adjust positions
+  const updatedElements = elements.map(el => {
+    if (selectedElementIds.includes(el.id)) {
+      return {
+        ...el,
+        parentId: groupId,
+        style: {
+          ...el.style,
+          // Make position relative to the group
+          x: el.style.x - boundingBox.minX,
+          y: el.style.y - boundingBox.minY
+        }
+      };
+    }
+    return el;
+  });
+
+  // Add the group element
+  return {
+    updatedElements: [...updatedElements, groupElement],
+    groupElement
+  };
+}
+
+/**
+ * Check if elements can be grouped
+ */
+static canElementsBeGrouped(elements: Element[], selectedElementIds: string[]): {
+  canGroup: boolean;
+  reason?: string;
+  invalidElements?: Element[];
+} {
+  if (selectedElementIds.length <= 1) {
     return {
-      updatedElements: [...updatedElements, groupElement],
-      groupElement
+      canGroup: false,
+      reason: 'Need at least 2 elements to create a group'
     };
   }
+
+  const selectedElements = this.findElementsByIds(elements, selectedElementIds);
+  
+  // Check if any selected element is already in a group or is a group itself
+  const invalidElements = selectedElements.filter(el => 
+    el.parentId || el.type === 'group'
+  );
+  
+  if (invalidElements.length > 0) {
+    const groupedElements = invalidElements.filter(el => el.parentId);
+    const groupElements = invalidElements.filter(el => el.type === 'group');
+    
+    let reason = 'Cannot group: ';
+    
+    if (groupedElements.length > 0) {
+      reason += `${groupedElements.length} element(s) already in a group`;
+    }
+    
+    if (groupElements.length > 0) {
+      if (groupedElements.length > 0) reason += ', ';
+      reason += `${groupElements.length} group(s) cannot be grouped again`;
+    }
+    
+    return {
+      canGroup: false,
+      reason,
+      invalidElements
+    };
+  }
+
+  return { canGroup: true };
+}
+
 
   /**
    * Ungroup elements from a group

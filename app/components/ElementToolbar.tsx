@@ -17,7 +17,8 @@ const ElementToolbar: React.FC = () => {
 
   const handleShapeSelect = (shapeType: string) => {
     console.log('ElementToolbar: Adding shape type:', shapeType); // Debug log
-    addElement('shape'); // Add shape element, shapeType will be set in factory
+    // Pass the shapeType as a parameter to addElement
+    addElement('shape', shapeType);
     setShowShapeSelector(false);
   };
 

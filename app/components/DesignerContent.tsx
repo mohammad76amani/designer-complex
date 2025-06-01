@@ -132,39 +132,78 @@ export const DesignerProvider: React.FC<DesignerProviderProps> = ({
     onTemplateUpdate(newElements);
   }, [onTemplateUpdate]);
   
-  const selectElement = useCallback((element: Element | null, isMultiSelect: boolean = false) => {
-    console.log('DesignerContext: Selecting element', element?.id, { isMultiSelect });
-    
-    if (!element) {
-      setSelectedElement(null);
-      setSelectedElementIds([]);
-      return;
-    }
+const selectElement = useCallback((element: Element | null, isMultiSelect: boolean = false) => {
+  if (!element) {
+    setSelectedElement(null);
+    setSelectedElementIds([]);
+    return;
+  }
 
-    if (isMultiSelect) {
-      setSelectedElementIds(prev => {
-        if (prev.includes(element.id)) {
-          const newIds = prev.filter(id => id !== element.id);
-          setSelectedElement(newIds.length > 0 
-            ? elements.find(el => el.id === newIds[newIds.length - 1]) || null 
-            : null);
-          return newIds;
-        } else {
-          const newIds = [...prev, element.id];
-          setSelectedElement(element);
-          return newIds;
-        }
-      });
-    } else {
-      setSelectedElement(element);
-      setSelectedElementIds([element.id]);
-    }
+  // Ensure element has all required style properties with defaults
+  const elementWithDefaults: Element = {
+    ...element,
+    style: {
+   
+      opacity: 1,
+      borderWidth: 0,
+      borderStyle: 'none',
+      borderColor: '#000000',
+      letterSpacing: 0,
+      lineHeight: 1.5,
+      boxShadowBlur: 0,
+      boxShadowSpread: 0,
+      boxShadowColor: 'rgba(0,0,0,0.2)',
+      rotate: 0,
+      blur: 0,
+      brightness: 100,
+      contrast: 100,
+      objectFit: 'cover',
+      ...element.style
+    },
+    // Ensure animation object exists
+    animation: {
+      hover: 'none',
+      click: 'none',
+      ...element.animation
+    },
+    // Ensure other properties have defaults
+    content: element.content || '',
+    href: element.href || '',
+    target: element.target || '_self',
+    src: element.src || '',
+    alt: element.alt || '',
+    videoSrc: element.videoSrc || '',
+    autoplay: element.autoplay || false,
+    loop: element.loop || false,
+    muted: element.muted || false,
+    controls: element.controls !== false, // Default to true
+    shapeType: element.shapeType || 'rectangle'
+  };
 
-    setContextMenu(prev => ({ ...prev, show: false }));
-  }, [elements]);
-  
-  const addElement = useCallback((elementType: string) => {
-    console.log('DesignerContext: Adding element type:', elementType);
+  if (isMultiSelect) {
+    setSelectedElementIds(prev => {
+      if (prev.includes(element.id)) {
+        const newIds = prev.filter(id => id !== element.id);
+        setSelectedElement(newIds.length > 0 
+          ? elements.find(el => el.id === newIds[newIds.length - 1]) || null 
+          : null);
+        return newIds;
+      } else {
+        const newIds = [...prev, element.id];
+        setSelectedElement(elementWithDefaults);
+        return newIds;
+      }
+    });
+  } else {
+    setSelectedElement(elementWithDefaults);
+    setSelectedElementIds([element.id]);
+  }
+
+  setContextMenu(prev => ({ ...prev, show: false }));
+
+}, [elements]);  
+  const addElement = useCallback((elementType: string, shapeType?: string) => {
+    console.log('DesignerContext: Adding element type:', elementType, 'shapeType:', shapeType);
     
     // Calculate center position
     const centerX = canvasWidth / 2 - 100;
@@ -174,13 +213,14 @@ export const DesignerProvider: React.FC<DesignerProviderProps> = ({
     const canvasBounds = { width: canvasWidth, height: canvasHeight };
     
     try {
-      // Create element using factory service with smart positioning
+      // Create element using factory service with smart positioning and shapeType
       const newElement = ElementFactoryService.createElementWithSmartPositioning(
         elementType,
         { x: centerX, y: centerY },
         elements,
         elements.length + 1,
-        10 // max attempts to find non-overlapping position
+        10, // max attempts to find non-overlapping position
+        shapeType // Pass the shapeType parameter
       );
       
       // Validate element fits in canvas

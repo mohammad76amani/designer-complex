@@ -450,3 +450,15 @@ export interface DesignerContextType {
 export interface ElementToolbarProps {
   onAddElement: (elementType: string) => void;
 }
+
+//DesignerProviderProps
+export interface DesignerProviderProps {
+  children: React.ReactNode
+  initialElements: Element[]
+  initialBreakpoint: 'sm' | 'lg'
+  initialBreakpoints: Record<string, number>
+  initialCanvasHeight?: number
+  onTemplateUpdate: (elements: Element[]) => void
+  onBreakpointChange: (breakpoint: 'sm' | 'lg') => void
+  onCanvasHeightUpdate: (height: number) => void
+}

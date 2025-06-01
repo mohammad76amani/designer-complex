@@ -1,23 +1,28 @@
 import React, { useEffect, useState } from 'react';
 import { useDesigner } from '../contexts/DesignerContext';
+import ElementManagementService from '../services/elementManagementService';
 
 const FloatingGroupButton: React.FC = () => {
-  const { 
-    selectedElementIds, 
-    elements, 
+  const {
+    selectedElementIds,
+    elements,
     updateElements,
     selectElement,
-    canvasRef 
+    canvasRef
   } = useDesigner();
 
   const [buttonPosition, setButtonPosition] = useState({ top: 20, left: 20 });
 
   // Check if we have a single group selected
-  const selectedGroup = selectedElementIds.length === 1 ? 
+  const selectedGroup = selectedElementIds.length === 1 ?
     elements.find(el => el.id === selectedElementIds[0] && el.type === 'group') : null;
 
-  // Show condition
-  const shouldShow = selectedElementIds.length >= 2 || selectedGroup;
+  // Check if elements can be grouped
+  const groupCheck = ElementManagementService.canElementsBeGrouped(elements, selectedElementIds);
+  const canGroup = groupCheck.canGroup;
+
+  // Show condition - keep original logic but add validation for grouping
+  const shouldShow = (selectedElementIds.length >= 2) || selectedGroup;
 
   const calculateGroupBounds = (elements: any[]) => {
     const positions = elements.map(el => ({
@@ -120,81 +125,43 @@ const FloatingGroupButton: React.FC = () => {
   }
 
   const handleCreateGroup = () => {
-    const selectedElements = elements.filter(el => selectedElementIds.includes(el.id));
-    
-    if (selectedElements.length < 2) return;
+    // Add validation before creating group
+    if (!canGroup) {
+      alert(groupCheck.reason);
+      return;
+    }
 
-    // Calculate group bounds
-    const bounds = calculateGroupBounds(selectedElements);
-    
-    // Create new group element
-    const groupId = `group-${Date.now()}`;
-    const groupElement = {
-      id: groupId,
-      type: 'group' as const,
-      style: {
-        x: bounds.x,
-        y: bounds.y,
-        width: bounds.width,
-        height: bounds.height,
-        zIndex: Math.max(...selectedElements.map(el => el.style.zIndex || 0)) + 1
-      },
-      content: {},
-      parentId: undefined
-    };
-
-    // Update selected elements to be children of the group
-    const updatedElements = elements.map(el => {
-      if (selectedElementIds.includes(el.id)) {
-        return {
-          ...el,
-          parentId: groupId,
-          style: {
-            ...el.style,
-            x: el.style.x - bounds.x,
-            y: el.style.y - bounds.y
-          }
-        };
-      }
-      return el;
-    });
-
-    // Add the group element
-    const newElements = [...updatedElements, groupElement];
-    
-    updateElements(newElements);
-    selectElement(groupElement, false);
+    try {
+      const { updatedElements, groupElement } = ElementManagementService.createGroup(
+        elements,
+        selectedElementIds
+      );
+      
+      updateElements(updatedElements);
+      selectElement(groupElement, false);
+    } catch (error) {
+      console.error('Error creating group:', error);
+      alert(error instanceof Error ? error.message : 'Failed to create group');
+    }
   };
 
   const handleUngroup = () => {
     if (!selectedGroup) return;
 
-    // Find all child elements
-    const childElements = elements.filter(el => el.parentId === selectedGroup.id);
-    
-    // Update child elements to be top-level and adjust their positions
-    const updatedElements = elements.map(el => {
-      if (el.parentId === selectedGroup.id) {
-        return {
-          ...el,
-          parentId: undefined,
-          style: {
-            ...el.style,
-            x: el.style.x + selectedGroup.style.x,
-            y: el.style.y + selectedGroup.style.y
-          }
-        };
+    try {
+      const updatedElements = ElementManagementService.ungroupElements(elements, selectedGroup);
+      updateElements(updatedElements);
+      
+      // Find the ungrouped elements and select them
+      const childElements = elements.filter(el => el.parentId === selectedGroup.id);
+      if (childElements.length > 0) {
+        childElements.forEach((el, index) => {
+          selectElement(el, index > 0);
+        });
       }
-      return el;
-    }).filter(el => el.id !== selectedGroup.id); // Remove the group element
-
-    updateElements(updatedElements);
-    
-    // Select the ungrouped elements
-    if (childElements.length > 0) {
-      childElements.forEach((el, index) => {
-        selectElement(el, index > 0);
-      });
+    } catch (error) {
+      console.error('Error ungrouping:', error);
+      alert(error instanceof Error ? error.message : 'Failed to ungroup elements');
     }
   };
 
@@ -217,9 +184,10 @@ const FloatingGroupButton: React.FC = () => {
         </button>
       ) : (
         <button
-          className="group-button"
+          className={`group-button ${!canGroup ? 'disabled' : ''}`}
           onClick={handleCreateGroup}
-          title={`Group ${selectedElementIds.length} elements`}
+          disabled={!canGroup}
+          title={canGroup ? `Group ${selectedElementIds.length} elements` : groupCheck.reason}
         >
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
             <rect x="3" y="3" width="7" height="7" rx="1" stroke="currentColor" strokeWidth="2"/>
@@ -261,15 +229,22 @@ const FloatingGroupButton: React.FC = () => {
           justify-content: center;
         }
 
-        .group-button:hover {
+        .group-button:hover:not(.disabled) {
           background-color: #2980b9;
           transform: translateY(-2px);
           box-shadow: 0 6px 16px rgba(52, 152, 219, 0.4);
         }
 
-        .group-button:active {
+        .group-button:active:not(.disabled) {
           transform: translateY(0);
           box-shadow: 0 2px 8px rgba(52, 152, 219, 0.3);
+        }
+
+        .group-button.disabled {
+          background-color: #95a5a6;
+          cursor: not-allowed;
+          opacity: 0.7;
+          box-shadow: 0 4px 12px rgba(149, 165, 166, 0.3);
         }
 
         .ungroup-button {

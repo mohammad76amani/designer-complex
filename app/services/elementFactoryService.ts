@@ -7,24 +7,27 @@ export class ElementFactoryService {
   static createElement(
     elementType: string,
     position: { x: number; y: number },
-    existingElementsCount: number = 0
+    existingElementsCount: number = 0,
+    shapeType?: string // Optional parameter for shape type
   ): Element {
-    console.log('ElementFactoryService: Creating element', { elementType, position, existingElementsCount });
+  console.log('ElementFactoryService: Creating element', { elementType, position, existingElementsCount, shapeType });
     
-    const baseElement = {
-      style: {
-        x: position.x,
-        y: position.y,
-        fontSize: 16,
-        fontWeight: 'normal' as const,
-        color: '#000000',
-        backgroundColor: 'transparent',
-        borderRadius: 0,
-        padding: 0,
-        textAlign: 'left' as const,
-        zIndex: existingElementsCount + 1
-      }
-    };
+    // In the createElement method, remove scale from baseElement.style:
+const baseElement = {
+  style: {
+    x: position.x,
+    y: position.y,
+    fontSize: 16,
+    fontWeight: 'normal' as const,
+    color: '#000000',
+    backgroundColor: 'transparent',
+    borderRadius: 0,
+    padding: 0,
+    textAlign: 'left' as const,
+    zIndex: existingElementsCount + 1
+  }
+};
+
 
     switch (elementType) {
       case 'heading':
@@ -60,7 +63,7 @@ export class ElementFactoryService {
           id: `button-${Date.now()}`,
           type: 'button',
           content: 'Click Me',
-          href: '#',
+          href: '',
           ...baseElement,
           style: {
             ...baseElement.style,
@@ -107,20 +110,20 @@ export class ElementFactoryService {
           }
         };
 
-      case 'shape':
-        return {
-          id: `shape-${Date.now()}`,
-          type: 'shape',
-          content: '',
-          shapeType: 'rectangle',
-          ...baseElement,
-          style: {
-            ...baseElement.style,
-            width: 100,
-            height: 100,
-            backgroundColor: '#3498db'
-          }
-        };
+     case 'shape':
+  return {
+    id: `shape-${Date.now()}`,
+    type: 'shape',
+    content: '',
+    shapeType: shapeType || 'rectangle', // This line is already correct
+    ...baseElement,
+    style: {
+      ...baseElement.style,
+      width: 100,
+      height: 100,
+      backgroundColor: '#3498db'
+    }
+  };
 
       default:
         throw new Error(`Unknown element type: ${elementType}`);
@@ -135,9 +138,10 @@ export class ElementFactoryService {
     preferredPosition: { x: number; y: number },
     existingElements: Element[],
     zIndex: number,
-    maxAttempts: number = 10
+    maxAttempts: number = 10,
+    shapeType?: string // Add this parameter
   ): Element {
-    const element = this.createElement(elementType, preferredPosition, existingElements.length);
+    const element = this.createElement(elementType, preferredPosition, existingElements.length, shapeType); // Pass shapeType
     
     // Try to find a non-overlapping position
     let attempts = 0;

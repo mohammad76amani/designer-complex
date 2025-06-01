@@ -68,34 +68,8 @@ const ContextMenu: React.FC<ContextMenuProps> = ({
           Paste
         </div>
         
-        {(onGroup || onUngroup) && <div className="context-menu-separator" />}
         
-        {onGroup && (
-          <div className="context-menu-item" onClick={onGroup}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <rect x="3" y="3" width="7" height="7" rx="1" stroke="currentColor" strokeWidth="2"/>
-              <rect x="14" y="3" width="7" height="7" rx="1" stroke="currentColor" strokeWidth="2"/>
-              <rect x="3" y="14" width="7" height="7" rx="1" stroke="currentColor" strokeWidth="2"/>
-              <rect x="14" y="14" width="7" height="7" rx="1" stroke="currentColor" strokeWidth="2"/>
-              <path d="M11 6H13M11 18H13M6 11V13M18 11V13" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-            </svg>
-            Group
-          </div>
-        )}
-        
-        {onUngroup && (
-          <div className="context-menu-item" onClick={onUngroup}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <rect x="3" y="3" width="7" height="7" rx="1" stroke="currentColor" strokeWidth="2"/>
-              <rect x="14" y="3" width="7" height="7" rx="1" stroke="currentColor" strokeWidth="2"/>
-              <rect x="3" y="14" width="7" height="7" rx="1" stroke="currentColor" strokeWidth="2"/>
-              <rect x="14" y="14" width="7" height="7" rx="1" stroke="currentColor" strokeWidth="2"/>
-              <path d="M9 9L15 15M15 9L9 15" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-            </svg>
-            Ungroup
-          </div>
-        )}
-        
+   
         <div className="context-menu-separator" />
         
         <div className="context-menu-item delete" onClick={onDelete}>

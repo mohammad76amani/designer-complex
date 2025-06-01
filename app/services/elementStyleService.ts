@@ -1,5 +1,12 @@
 import { Element } from '../types/template';
 
+interface StyleOptions {
+  isDragging?: boolean;
+  isSelected?: boolean;
+  isInGroup?: boolean;
+  isHovered?: boolean;
+}
+
 /**
  * Service for generating element styles and CSS properties
  */
@@ -101,34 +108,34 @@ export class ElementStyleService {
   /**
    * Generate border CSS string based on element style and state
    */
-  static generateBorder(
-    element: Element, 
-    isSelected: boolean = false, 
-    isHovered: boolean = false
-  ): string {
-    const { style, animation } = element;
-    
-    // Hover animation border takes priority
-    if (isHovered && animation?.hover === 'border') {
-      const borderColor = animation.hoverBorderColor || '#3498db';
-      return `2px solid ${borderColor}`;
-    }
-    
-    // Custom border from style
-    if (style.borderWidth && style.borderStyle !== 'none') {
-      const width = style.borderWidth;
-      const borderStyle = style.borderStyle;
-      const color = style.borderColor || '#000000';
-      return `${width}px ${borderStyle} ${color}`;
-    }
-    
-    // Selection border
-    if (isSelected) {
-      return '2px solid #3498db';
-    }
-    
-    return 'none';
+static generateBorder(
+  element: Element, 
+  isSelected: boolean = false, 
+  isHovered: boolean = false
+): string {
+  const { style, animation } = element;
+  
+  // Hover animation border takes priority
+  if (isHovered && animation?.hover === 'border') {
+    const borderColor = animation.hoverBorderColor || '#3498db';
+    return `2px solid ${borderColor}`;
   }
+  
+  // Custom border from style
+  if (style.borderWidth && style.borderStyle !== 'none') {
+    const width = style.borderWidth;
+    const borderStyle = style.borderStyle;
+    const color = style.borderColor || '#000000';
+    return `${width}px ${borderStyle} ${color}`;
+  }
+  
+  // Selection border
+  if (isSelected) {
+    return '2px solid #3498db';
+  }
+  
+  return 'none'; // This is the problem!
+}
 
   /**
    * Get background color based on element style and state
@@ -207,61 +214,100 @@ export class ElementStyleService {
   }
 
   /**
-   * Generate complete element style object
+   * Generate element style with proper font weight handling
    */
-  static generateElementStyle(
-    element: Element,
-    options: {
-      isSelected?: boolean;
-      isHovered?: boolean;
-      isActive?: boolean;
-      isDragging?: boolean;
-      isResizing?: boolean;
-      isInGroup?: boolean;
-    } = {}
-  ): React.CSSProperties {
-    const {
-      isSelected = false,
-      isHovered = false,
-      isActive = false,
-      isDragging = false,
-      isResizing = false,
-      isInGroup = false
-    } = options;
+static generateElementStyle(element: Element, options: StyleOptions): React.CSSProperties {
+  const { style } = element;
+  
+  // Convert font weight to proper format
+  const getFontWeight = (weight: string | number): string => {
+    // Handle legacy values
+    if (weight === 'normal') return '400';
+    if (weight === 'bold') return '700';
+    
+    // Ensure numeric weights are strings
+    return String(weight);
+  };
 
-    const { style, type } = element;
+  const baseStyle: React.CSSProperties = {
+    position: 'absolute',
+    left: `${style.x}px`,
+    top: `${style.y}px`,
+    width: typeof style.width === 'string' ? style.width : `${style.width}px`,
+    height: typeof style.height === 'string' ? style.height : `${style.height}px`,
+    fontSize: `${style.fontSize}px`,
+    fontWeight: getFontWeight(style.fontWeight), // Use the helper function
+    color: style.color,
+    backgroundColor: style.backgroundColor,
+    borderRadius: `${style.borderRadius}px`,
+    padding: `${style.padding}px`,
+    zIndex: style.zIndex,
+    boxSizing: 'border-box',
+    cursor: options.isDragging ? 'grabbing' : 'grab',
+    userSelect: 'none',
+    
+    // Add font family to ensure font weights work
+    fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif",
+    
+    // Additional style properties
+    opacity: style.opacity ?? 1,
+    borderWidth: `${style.borderWidth ?? 0}px`,
+    borderStyle: style.borderStyle ?? 'none',
+    borderColor: style.borderColor ?? '#000000',
+    letterSpacing: `${style.letterSpacing ?? 0}px`,
+    lineHeight: style.lineHeight ?? 1.5,
+    
+    // Transform properties
+    transform: `rotate(${style.rotate ?? 0}deg)`,
+    
+    // Filter properties
+    filter: [
+      style.blur ? `blur(${style.blur}px)` : '',
+      style.brightness !== undefined ? `brightness(${style.brightness}%)` : '',
+      style.contrast !== undefined ? `contrast(${style.contrast}%)` : ''
+    ].filter(Boolean).join(' ') || 'none',
+    
+    // Box shadow
+    boxShadow: style.boxShadowBlur || style.boxShadowSpread ? 
+      `0 0 ${style.boxShadowBlur ?? 0}px ${style.boxShadowSpread ?? 0}px ${style.boxShadowColor ?? 'rgba(0,0,0,0.2)'}` : 
+      'none'
+  };
 
-    return {
-      position: 'absolute',
-      left: `${style.x}px`,
-      top: `${style.y}px`,
-      width: typeof style.width === 'string' ? style.width : `${style.width}px`,
-      height: typeof style.height === 'string' ? style.height : `${style.height}px`,
-      fontSize: `${style.fontSize}px`,
-      fontWeight: style.fontWeight,
-      color: this.getTextColor(element, isHovered, isActive),
-      backgroundColor: type === 'shape' ? 'transparent' : this.getBackgroundColor(element, isHovered, isActive),
-      borderRadius: `${style.borderRadius}px`,
-      padding: `${style.padding}px`,
-      textAlign: style.textAlign as 'left' | 'center' | 'right',
-      zIndex: isDragging || isResizing ? 1000 : style.zIndex,
-      boxSizing: 'border-box',
-      cursor: isDragging ? 'grabbing' : (isInGroup ? 'pointer' : 'grab'),
-      border: type === 'shape' ? 'none' : this.generateBorder(element, isSelected, isHovered),
-      boxShadow: type === 'shape' ? 'none' : this.generateBoxShadow(element, isSelected, isHovered),
-      userSelect: 'none',
-      touchAction: 'none',
-      opacity: style.opacity ?? 1,
-      letterSpacing: style.letterSpacing !== undefined ? `${style.letterSpacing}px` : 'normal',
-      lineHeight: style.lineHeight ?? 'normal',
-      transform: this.generateTransform(element, isHovered, isActive),
-      filter: type === 'shape' ? 'none' : this.generateFilter(element),
-      transition: 'all 0.2s ease',
-      animationDuration: element.animation?.entrance?.duration ? `${element.animation.entrance.duration}ms` : '1000ms',
-      animationDelay: element.animation?.entrance?.delay ? `${element.animation.entrance.delay}ms` : '0ms',
-      animationFillMode: 'both'
-    };
+  // Add selection styles
+  if (options.isSelected && !options.isInGroup) {
+    baseStyle.outline = '2px solid #3498db';
+    baseStyle.outlineOffset = '2px';
   }
+
+  // Add hover/active states for animations
+  if (options.isHovered && element.animation?.hover) {
+    // Apply hover animations
+    switch (element.animation.hover) {
+      case 'scale-up':
+        baseStyle.transform = `${baseStyle.transform} scale(1.05)`;
+        break;
+      case 'scale-down':
+        baseStyle.transform = `${baseStyle.transform} scale(0.95)`;
+        break;
+      case 'bg-color':
+        baseStyle.backgroundColor = element.animation.hoverBgColor || '#3498db';
+        break;
+      case 'text-color':
+        baseStyle.color = element.animation.hoverTextColor || '#ffffff';
+        break;
+      case 'shadow':
+        baseStyle.boxShadow = '0 4px 12px rgba(0,0,0,0.3)';
+        break;
+      case 'border':
+        baseStyle.borderWidth = '2px';
+        baseStyle.borderStyle = 'solid';
+        baseStyle.borderColor = element.animation.hoverBorderColor || '#3498db';
+        break;
+    }
+  }
+
+  return baseStyle;
+}
 
   /**
    * Generate CSS string for element animations (for injection into document)

@@ -113,423 +113,342 @@ const FloatingStyleEditor: React.FC = () => {
   };
 
   // Render color picker
-  const renderColorPicker = (label: string, property: string, value: string) => (
-    <div className="style-control">
-      <label>{label}</label>
-      <div className="color-picker-container">
-        <input
-          type="color"
-          value={value}
-          onChange={(e) => updateStyle(property, e.target.value)}
-        />
-        <input
-          type="text"
-          value={value}
-          onChange={(e) => updateStyle(property, e.target.value)}
-          placeholder="#RRGGBB"
-        />
-      </div>
+  const renderColorPicker = (label: string, property: string, value: string | undefined) => (
+  <div className="style-control">
+    <label>{label}</label>
+    <div className="color-picker-container">
+      <input
+        type="color"
+        value={value || '#000000'} // Always provide a default value
+        onChange={(e) => updateStyle(property, e.target.value)}
+      />
+      <input
+        type="text"
+        value={value || '#000000'} // Always provide a default value
+        onChange={(e) => updateStyle(property, e.target.value)}
+        placeholder="#RRGGBB"
+      />
     </div>
-  );
-
+  </div>
+);
   // Render number input with slider
   const renderNumberInput = (
-    label: string,
-    property: string,
-    value: number,
-    min: number,
-    max: number,
-    step: number = 1,
-    unit: string = 'px'
-  ) => (
-    <div className="style-control">
-      <label>{label}</label>
-      <div className="number-input-container">
+  label: string,
+  property: string,
+  value: number | undefined,
+  min: number,
+  max: number,
+  step: number = 1,
+  unit: string = 'px'
+) => (
+  <div className="style-control">
+    <label>{label}</label>
+    <div className="number-input-container">
+      <input
+        type="range"
+        min={min}
+        max={max}
+        step={step}
+        value={value ?? 0} // Use nullish coalescing for better undefined handling
+        onChange={(e) => updateStyle(property, parseFloat(e.target.value))}
+      />
+      <div className="number-input-value">
         <input
-          type="range"
+          type="number"
           min={min}
           max={max}
           step={step}
-          value={value}
+          value={value ?? 0} // Use nullish coalescing
           onChange={(e) => updateStyle(property, parseFloat(e.target.value))}
         />
-        <div className="number-input-value">
-          <input
-            type="number"
-            min={min}
-            max={max}
-            step={step}
-            value={value}
-            onChange={(e) => updateStyle(property, parseFloat(e.target.value))}
-          />
-          <span>{unit}</span>
-        </div>
+        <span>{unit}</span>
       </div>
     </div>
-  );
+  </div>
+);
+
 
   // Render select dropdown
-  const renderSelect = (
-    label: string,
-    property: string,
-    value: string,
-    options: { value: string, label: string }[]
-  ) => (
-    <div className="style-control">
-      <label>{label}</label>
-      <select
-        value={value}
-        onChange={(e: React.ChangeEvent<HTMLSelectElement>) => updateStyle(property, e.target.value)}
-      >
-        {options.map(option => (
-          <option key={option.value} value={option.value}>
-            {option.label}
-          </option>
-        ))}
-      </select>
-    </div>
-  );
+const renderSelect = (
+  label: string,
+  property: string,
+  value: string | undefined,
+  options: { value: string, label: string }[]
+) => (
+  <div className="style-control">
+    <label>{label}</label>
+    <select
+      value={value || options[0]?.value || ''} // Provide default value
+      onChange={(e: React.ChangeEvent<HTMLSelectElement>) => updateStyle(property, e.target.value)}
+    >
+      {options.map(option => (
+        <option key={option.value} value={option.value}>
+          {option.label}
+        </option>
+      ))}
+    </select>
+  </div>
+);
 
   // Render text input
-  const renderTextInput = (
-    label: string,
-    property: string,
-    value: string
-  ) => (
-    <div className="style-control">
-      <label>{label}</label>
-      <input
-        type="text"
-        value={value}
-        onChange={(e) => updateAttribute(property, e.target.value)}
-        placeholder={label}
-      />
-    </div>
-  );
+ const renderTextInput = (
+  label: string,
+  property: string,
+  value: string | undefined
+) => (
+  <div className="style-control">
+    <label>{label}</label>
+    <input
+      type="text"
+      value={value || ''} // Always provide a default value
+      onChange={(e) => updateAttribute(property, e.target.value)}
+      placeholder={label}
+    />
+  </div>
+);
 
   // Render text area
-  const renderTextArea = (
-    label: string,
-    value: string
-  ) => (
-    <div className="style-control">
-      <label>{label}</label>
-      <textarea
-        value={value}
-        onChange={(e) => updateContent(e.target.value)}
-        rows={3}
-        placeholder={label}
-      />
-    </div>
-  );
+ const renderTextArea = (
+  label: string,
+  value: string | undefined
+) => (
+  <div className="style-control">
+    <label>{label}</label>
+    <textarea
+      value={value || ''} // Always provide a default value
+      onChange={(e) => updateContent(e.target.value)}
+      rows={3}
+      placeholder={label}
+    />
+  </div>
+);
 
   // Render style tab content
-  const renderStyleTab = () => (
-    <div className="tab-content">
-      {/* Background and Border - common to most elements */}
-      <div className="control-group">
-        <h4>Appearance</h4>
-        {renderColorPicker('Background', 'backgroundColor', selectedElement.style.backgroundColor)}
-        {renderNumberInput('Border Radius', 'borderRadius', selectedElement.style.borderRadius, 0, 100)}
-        {renderNumberInput('Z-Index', 'zIndex', selectedElement.style.zIndex, 0, 1000, 1, '')}
-
-        {/* Add opacity control - not in the original template */}
-        {renderNumberInput('Opacity', 'opacity',
-          selectedElement.style.opacity !== undefined ? selectedElement.style.opacity : 1,
-          0, 1, 0.1, '')}
-      </div>
-
-      {/* Element-specific controls */}
-      {(selectedElement.type === 'button' || selectedElement.type === 'paragraph' || selectedElement.type === 'heading') && (
-        <div className="control-group">
-          <h4>Typography</h4>
-          {renderColorPicker('Text Color', 'color', selectedElement.style.color)}
-          {renderNumberInput('Font Size', 'fontSize', selectedElement.style.fontSize, 8, 72)}
-          {renderSelect('Font Weight', 'fontWeight', selectedElement.style.fontWeight, [
-            { value: 'normal', label: 'Normal' },
-            { value: 'bold', label: 'Bold' },
-            { value: '100', label: 'Thin (100)' },
-            { value: '200', label: 'Extra Light (200)' },
-            { value: '300', label: 'Light (300)' },
-            { value: '400', label: 'Regular (400)' },
-            { value: '500', label: 'Medium (500)' },
-            { value: '600', label: 'Semi Bold (600)' },
-            { value: '700', label: 'Bold (700)' },
-            { value: '800', label: 'Extra Bold (800)' },
-            { value: '900', label: 'Black (900)' }
-          ])}
-          {renderSelect('Text Align', 'textAlign', selectedElement.style.textAlign, [
-            { value: 'left', label: 'Left' },
-            { value: 'center', label: 'Center' },
-            { value: 'right', label: 'Right' }
-          ])}
-          {renderNumberInput('Padding', 'padding', selectedElement.style.padding, 0, 50)}
-
-          {/* Add letter spacing - not in the original template */}
-          {renderNumberInput('Letter Spacing', 'letterSpacing',
-            selectedElement.style.letterSpacing !== undefined ? selectedElement.style.letterSpacing : 0,
-            -5, 10, 0.1, 'px')}
-
-          {/* Add line height - not in the original template */}
-          {renderNumberInput('Line Height', 'lineHeight',
-            selectedElement.style.lineHeight !== undefined ? selectedElement.style.lineHeight : 1.5,
-            0.5, 3, 0.1, '')}
-        </div>
-      )}
-
-      {/* Add border controls - not in the original template */}
-      <div className="control-group">
-        <h4>Border</h4>
-        {renderNumberInput('Border Width', 'borderWidth',
-          selectedElement.style.borderWidth !== undefined ? selectedElement.style.borderWidth : 0,
-          0, 20, 1, 'px')}
-        {renderSelect('Border Style', 'borderStyle',
-          selectedElement.style.borderStyle !== undefined ? selectedElement.style.borderStyle : 'none', [
-          { value: 'none', label: 'None' },
-          { value: 'solid', label: 'Solid' },
-          { value: 'dashed', label: 'Dashed' },
-          { value: 'dotted', label: 'Dotted' }
-        ])}
-        {renderColorPicker('Border Color', 'borderColor',
-          selectedElement.style.borderColor !== undefined ? selectedElement.style.borderColor : '#000000')}
-      </div>
-
-      {/* Add shadow controls - not in the original template */}
-      <div className="control-group">
-        <h4>Shadow</h4>
-        {renderNumberInput('Shadow Blur', 'boxShadowBlur',
-          selectedElement.style.boxShadowBlur !== undefined ? selectedElement.style.boxShadowBlur : 0,
-          0, 50, 1, 'px')}
-        {renderNumberInput('Shadow Spread', 'boxShadowSpread',
-          selectedElement.style.boxShadowSpread !== undefined ? selectedElement.style.boxShadowSpread : 0,
-          0, 50, 1, 'px')}
-        {renderColorPicker('Shadow Color', 'boxShadowColor',
-          selectedElement.style.boxShadowColor !== undefined ? selectedElement.style.boxShadowColor : 'rgba(0,0,0,0.2)')}
-      </div>
+ const renderStyleTab = () => (
+  <div className="tab-content">
+    {/* Background and Border - common to most elements */}
+    <div className="control-group">
+      <h4>Appearance</h4>
+      {renderColorPicker('Background', 'backgroundColor', selectedElement.style.backgroundColor || 'transparent')}
+      {renderNumberInput('Border Radius', 'borderRadius', selectedElement.style.borderRadius || 0, 0, 100)}
+      {renderNumberInput('Z-Index', 'zIndex', selectedElement.style.zIndex || 0, 0, 1000, 1, '')}
+      {renderNumberInput('Opacity', 'opacity', selectedElement.style.opacity ?? 1, 0, 1, 0.1, '')}
     </div>
-  );
+
+    {/* Typography section */}
+    {(selectedElement.type === 'button' || selectedElement.type === 'paragraph' || selectedElement.type === 'heading') && (
+      <div className="control-group">
+        <h4>Typography</h4>
+        {renderColorPicker('Text Color', 'color', selectedElement.style.color || '#000000')}
+        {renderNumberInput('Font Size', 'fontSize', selectedElement.style.fontSize || 16, 8, 72)}
+   {renderSelect('Font Weight', 'fontWeight', selectedElement.style.fontWeight || '400', [
+  { value: '100', label: 'Thin (100)' },
+  { value: '200', label: 'Extra Light (200)' },
+  { value: '300', label: 'Light (300)' },
+  { value: '400', label: 'Regular (400)' },
+  { value: '500', label: 'Medium (500)' },
+  { value: '600', label: 'Semi Bold (600)' },
+  { value: '700', label: 'Bold (700)' },
+  { value: '800', label: 'Extra Bold (800)' },
+  { value: '900', label: 'Black (900)' }
+])}
+        {renderSelect('Text Align', 'textAlign', selectedElement.style.textAlign || 'left', [
+          { value: 'left', label: 'Left' },
+          { value: 'center', label: 'Center' },
+          { value: 'right', label: 'Right' }
+        ])}
+        {renderNumberInput('Padding', 'padding', selectedElement.style.padding || 0, 0, 50)}
+        {renderNumberInput('Letter Spacing', 'letterSpacing', selectedElement.style.letterSpacing ?? 0, -5, 10, 0.1, 'px')}
+        {renderNumberInput('Line Height', 'lineHeight', selectedElement.style.lineHeight ?? 1.5, 0.5, 3, 0.1, '')}
+      </div>
+    )}
+
+    {/* Border controls */}
+    <div className="control-group">
+      <h4>Border</h4>
+      {renderNumberInput('Border Width', 'borderWidth', selectedElement.style.borderWidth ?? 0, 0, 20, 1, 'px')}
+      {renderSelect('Border Style', 'borderStyle', selectedElement.style.borderStyle || 'none', [
+        { value: 'none', label: 'None' },
+        { value: 'solid', label: 'Solid' },
+        { value: 'dashed', label: 'Dashed' },
+        { value: 'dotted', label: 'Dotted' }
+      ])}
+      {renderColorPicker('Border Color', 'borderColor', selectedElement.style.borderColor || '#000000')}
+    </div>
+
+    {/* Shadow controls */}
+    <div className="control-group">
+      <h4>Shadow</h4>
+      {renderNumberInput('Shadow Blur', 'boxShadowBlur', selectedElement.style.boxShadowBlur ?? 0, 0, 50, 1, 'px')}
+      {renderNumberInput('Shadow Spread', 'boxShadowSpread', selectedElement.style.boxShadowSpread ?? 0, 0, 50, 1, 'px')}
+      {renderColorPicker('Shadow Color', 'boxShadowColor', selectedElement.style.boxShadowColor || 'rgba(0,0,0,0.2)')}
+    </div>
+  </div>
+);
+
 
   // Render content tab
-  const renderContentTab = () => (
-    <div className="tab-content">
-      {/* Only show text tab for text elements */}
-      {(selectedElement.type === 'button' || selectedElement.type === 'paragraph' || selectedElement.type === 'heading') && (
-        <div className="control-group">
-          <h4>Text Content</h4>
-          {renderTextArea('Content', selectedElement.content)}
+const renderContentTab = () => (
+  <div className="tab-content">
+    {/* Text content */}
+    {(selectedElement.type === 'button' || selectedElement.type === 'paragraph' || selectedElement.type === 'heading') && (
+      <div className="control-group">
+        <h4>Text Content</h4>
+        {renderTextArea('Content', selectedElement.content)}
+      </div>
+    )}
+
+    {/* Button-specific controls */}
+    {selectedElement.type === 'button' && (
+      <div className="control-group">
+        <h4>Button Properties</h4>
+        {renderTextInput('Link URL', 'href', selectedElement.href)}
+        {renderSelect('Open Link In', 'target', selectedElement.target || '_self', [
+          { value: '_self', label: 'Same Window' },
+          { value: '_blank', label: 'New Window' }
+        ])}
+      </div>
+    )}
+
+    {/* Image-specific controls */}
+    {selectedElement.type === 'image' && (
+      <div className="control-group">
+        <h4>Image Properties</h4>
+        {renderTextInput('Image URL', 'src', selectedElement.src)}
+        {renderTextInput('Alt Text', 'alt', selectedElement.alt)}
+        {renderSelect('Image Fit', 'objectFit', selectedElement.style.objectFit || 'cover', [
+          { value: 'cover', label: 'Cover' },
+          { value: 'contain', label: 'Contain' },
+          { value: 'fill', label: 'Fill' },
+          { value: 'none', label: 'None' }
+        ])}
+      </div>
+    )}
+
+    {/* Shape-specific controls */}
+    {selectedElement.type === 'shape' && (
+      <div className="control-group">
+        <h4>Shape Properties</h4>
+        <div className="style-control">
+          <label>Shape Type</label>
+          <select
+            value={selectedElement.shapeType || 'rectangle'}
+            onChange={(e) => {
+              const newShapeType = e.target.value;
+              console.log(`Changing shape type to: ${newShapeType} for element ID: ${selectedElement.id}`);
+
+              const updatedElement = {
+                ...selectedElement,
+                shapeType: newShapeType
+              };
+
+              console.log('Updated element:', updatedElement);
+              updateElement(updatedElement);
+            }}
+          >
+            <option value="rectangle">Rectangle</option>
+            <option value="circle">Circle</option>
+            <option value="triangle">Triangle</option>
+            <option value="arrow">Arrow</option>
+            <option value="star">Star</option>
+          </select>
         </div>
-      )}
+      </div>
+    )}
 
-      {/* Button-specific controls */}
-      {selectedElement.type === 'button' && (
-        <div className="control-group">
-          <h4>Button Properties</h4>
-          {renderTextInput('Link URL', 'href', selectedElement.href || '')}
+    {/* Video-specific controls */}
+    {selectedElement.type === 'video' && (
+      <div className="control-group">
+        <h4>Video Properties</h4>
+        {renderTextInput('Video URL', 'videoSrc', selectedElement.videoSrc)}
 
-          {/* Add target attribute - not in the original template */}
-          {renderSelect('Open Link In', 'target',
-            selectedElement.target !== undefined ? selectedElement.target : '_self', [
-            { value: '_self', label: 'Same Window' },
-            { value: '_blank', label: 'New Window' }
-          ])}
-        </div>
-      )}
+        <div className="style-control">
+          <label>Video Options</label>
+          <div className="checkbox-group">
+            <label className="checkbox-label">
+              <input
+                type="checkbox"
+                checked={selectedElement.autoplay || false}
+                onChange={(e) => updateAttribute('autoplay', e.target.checked)}
+              />
+              Autoplay
+            </label>
 
-      {/* Image-specific controls */}
-      {selectedElement.type === 'image' && (
-        <div className="control-group">
-          <h4>Image Properties</h4>
-          {renderTextInput('Image URL', 'src', selectedElement.src || '')}
-          {renderTextInput('Alt Text', 'alt', selectedElement.alt || '')}
+            <label className="checkbox-label">
+              <input
+                type="checkbox"
+                checked={selectedElement.loop || false}
+                onChange={(e) => updateAttribute('loop', e.target.checked)}
+              />
+              Loop
+            </label>
 
-          {/* Add object-fit property - not in the original template */}
-          {renderSelect('Image Fit', 'objectFit',
-            selectedElement.style.objectFit !== undefined ? selectedElement.style.objectFit : 'cover', [
-            { value: 'cover', label: 'Cover' },
-            { value: 'contain', label: 'Contain' },
-            { value: 'fill', label: 'Fill' },
-            { value: 'none', label: 'None' }
-          ])}
-        </div>
-      )}
+            <label className="checkbox-label">
+              <input
+                type="checkbox"
+                checked={selectedElement.muted || false}
+                onChange={(e) => updateAttribute('muted', e.target.checked)}
+              />
+              Muted
+            </label>
 
-      {/* Shape-specific controls */}
-      {selectedElement.type === 'shape' && (
-        <div className="control-group">
-          <h4>Shape Properties</h4>
-          <div className="style-control">
-            <label>Shape Type</label>
-            <select
-              value={selectedElement.shapeType || 'rectangle'}
-              onChange={(e) => {
-                const newShapeType = e.target.value;
-                console.log(`Changing shape type to: ${newShapeType} for element ID: ${selectedElement.id}`);
-
-                const updatedElement = {
-                  ...selectedElement,
-                  shapeType: newShapeType
-                };
-
-                console.log('Updated element:', updatedElement);
-                updateElement(updatedElement);
-              }}
-            >
-              <option value="rectangle">Rectangle</option>
-              <option value="circle">Circle</option>
-              <option value="triangle">Triangle</option>
-              <option value="arrow">Arrow</option>
-              <option value="star">Star</option>
-            </select>
+            <label className="checkbox-label">
+              <input
+                type="checkbox"
+                checked={selectedElement.controls !== false} // Default to true
+                onChange={(e) => updateAttribute('controls', e.target.checked)}
+              />
+              Show Controls
+            </label>
           </div>
         </div>
-      )}
 
-      {/* Video-specific controls */}
-      {selectedElement.type === 'video' && (
-        <div className="control-group">
-          <h4>Video Properties</h4>
-          {renderTextInput('Video URL', 'videoSrc', selectedElement.videoSrc || '')}
+        {renderSelect('Video Fit', 'objectFit', selectedElement.style.objectFit || 'cover', [
+          { value: 'cover', label: 'Cover' },
+          { value: 'contain', label: 'Contain' },
+          { value: 'fill', label: 'Fill' },
+          { value: 'none', label: 'None' }
+        ])}
+      </div>
+    )}
+  </div>
+);
 
-          <div className="style-control">
-            <label>Video Options</label>
-            <div className="checkbox-group">
-              <label className="checkbox-label">
-                <input
-                  type="checkbox"
-                  checked={selectedElement.autoplay || false}
-                  onChange={(e) => updateAttribute('autoplay', e.target.checked)}
-                />
-                Autoplay
-              </label>
-
-              <label className="checkbox-label">
-                <input
-                  type="checkbox"
-                  checked={selectedElement.loop || false}
-                  onChange={(e) => updateAttribute('loop', e.target.checked)}
-                />
-                Loop
-              </label>
-
-              <label className="checkbox-label">
-                <input
-                  type="checkbox"
-                  checked={selectedElement.muted || false}
-                  onChange={(e) => updateAttribute('muted', e.target.checked)}
-                />
-                Muted
-              </label>
-
-              <label className="checkbox-label">
-                <input
-                  type="checkbox"
-                  checked={selectedElement.controls || true}
-                  onChange={(e) => updateAttribute('controls', e.target.checked)}
-                />
-                Show Controls
-              </label>
-            </div>
-          </div>
-
-          {/* Add object-fit property */}
-          {renderSelect('Video Fit', 'objectFit',
-            selectedElement.style.objectFit !== undefined ? selectedElement.style.objectFit : 'cover', [
-            { value: 'cover', label: 'Cover' },
-            { value: 'contain', label: 'Contain' },
-            { value: 'fill', label: 'Fill' },
-            { value: 'none', label: 'None' }
-          ])}
-        </div>
-      )}
-    </div>
-  );
 
 
   // Render effects tab
   const renderEffectsTab = () => (
     <div className="tab-content">
-      <div className="control-group">
-        <h4>Transform</h4>
-        {/* Rotation control */}
-        {renderNumberInput('Rotation', 'rotate',
-          selectedElement.style.rotate !== undefined ? selectedElement.style.rotate : 0,
-          0, 360, 1, 'deg')}
-
-        {/* Scale control */}
-        {renderNumberInput('Scale', 'scale',
-          selectedElement.style.scale !== undefined ? selectedElement.style.scale : 1,
-          0.1, 3, 0.1, '')}
-      </div>
+  
 
       <div className="control-group">
         <h4>Filters</h4>
-        {/* Blur filter - updated to use direct property */}
-        {renderNumberInput('Blur', 'blur',
-          selectedElement.style.blur !== undefined ? selectedElement.style.blur : 0,
-          0, 20, 0.5, 'px')}
-
-        {/* Brightness filter - updated to use direct property */}
-        {renderNumberInput('Brightness', 'brightness',
-          selectedElement.style.brightness !== undefined ? selectedElement.style.brightness : 100,
-          0, 200, 5, '%')}
-
-        {/* Contrast filter - updated to use direct property */}
-        {renderNumberInput('Contrast', 'contrast',
-          selectedElement.style.contrast !== undefined ? selectedElement.style.contrast : 100,
-          0, 200, 5, '%')}
+        {renderNumberInput('Blur', 'blur', selectedElement.style.blur ?? 0, 0, 20, 0.5, 'px')}
+        {renderNumberInput('Brightness', 'brightness', selectedElement.style.brightness ?? 100, 0, 200, 5, '%')}
+        {renderNumberInput('Contrast', 'contrast', selectedElement.style.contrast ?? 100, 0, 200, 5, '%')}
       </div>
-
-      <div className="control-group">
-        <h4>Hover Animation</h4>
-        {renderSelect('Effect', 'animation.hover',
-          selectedElement.animation?.hover || 'none', [
-          { value: 'none', label: 'None' },
-          { value: 'bg-color', label: 'Background Color' },
-          { value: 'text-color', label: 'Text Color' },
-          { value: 'scale-up', label: 'Scale Up' },
-          { value: 'scale-down', label: 'Scale Down' },
-          { value: 'shadow', label: 'Add Shadow' },
-          { value: 'border', label: 'Add Border' }
-        ])}
-
-        {selectedElement.animation?.hover === 'bg-color' && (
-          renderColorPicker('Background Color', 'animation.hoverBgColor',
-            selectedElement.animation?.hoverBgColor || '#3498db')
-        )}
-
-        {selectedElement.animation?.hover === 'text-color' && (
-          renderColorPicker('Text Color', 'animation.hoverTextColor',
-            selectedElement.animation?.hoverTextColor || '#ffffff')
-        )}
-
-        {selectedElement.animation?.hover === 'border' && (
-          renderColorPicker('Border Color', 'animation.hoverBorderColor',
-            selectedElement.animation?.hoverBorderColor || '#3498db')
-        )}
-      </div>
-
-      <div className="control-group">
-        <h4>Click Animation</h4>
-        {renderSelect('Effect', 'animation.click',
-          selectedElement.animation?.click || 'none', [
-          { value: 'none', label: 'None' },
-          { value: 'bg-color', label: 'Background Color' },
-          { value: 'text-color', label: 'Text Color' },
-          { value: 'scale-down', label: 'Scale Down' }
-        ])}
-
-        {selectedElement.animation?.click === 'bg-color' && (
-          renderColorPicker('Background Color', 'animation.clickBgColor',
-            selectedElement.animation?.clickBgColor || '#2980b9')
-        )}
-
-        {selectedElement.animation?.click === 'text-color' && (
-          renderColorPicker('Text Color', 'animation.clickTextColor',
-            selectedElement.animation?.clickTextColor || '#ffffff')
-        )}
-      </div>
+      
     </div>
   );
+
+  // Add this function to debug font weight
+  const debugFontWeight = () => {
+    console.log('Current element font weight:', selectedElement.style.fontWeight);
+    console.log('Font family being used:', getComputedStyle(document.body).fontFamily);
+    
+    // Test if Inter font is loaded
+    const testElement = document.createElement('div');
+    testElement.style.fontFamily = 'Inter';
+    testElement.style.fontWeight = '100';
+    testElement.textContent = 'Test';
+    document.body.appendChild(testElement);
+    
+    const computedStyle = getComputedStyle(testElement);
+    console.log('Computed font family:', computedStyle.fontFamily);
+    console.log('Computed font weight:', computedStyle.fontWeight);
+    
+    document.body.removeChild(testElement);
+  };
 
   return (
     <div
