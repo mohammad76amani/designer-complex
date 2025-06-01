@@ -360,4 +360,3 @@ const baseElement = {
 }
 
 export default ElementFactoryService;
-
