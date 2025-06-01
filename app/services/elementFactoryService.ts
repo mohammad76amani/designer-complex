@@ -1,30 +1,31 @@
+import { tree } from 'next/dist/build/templates/app-page';
 import { Element } from '../types/template';
 
 export class ElementFactoryService {
   /**
    * Create a new element with default properties
    */
-  static createElement(
-    elementType: string,
-    position: { x: number; y: number },
-    existingElementsCount: number = 0
-  ): Element {
-    console.log('ElementFactoryService: Creating element', { elementType, position, existingElementsCount });
-    
-    const baseElement = {
-      style: {
-        x: position.x,
-        y: position.y,
-        fontSize: 16,
-        fontWeight: 'normal' as const,
-        color: '#000000',
-        backgroundColor: 'transparent',
-        borderRadius: 0,
-        padding: 0,
-        textAlign: 'left' as const,
-        zIndex: existingElementsCount + 1
-      }
-    };
+static createElement(
+  elementType: string,
+  position: { x: number; y: number },
+  existingElementsCount: number = 0,
+  shapeType?: string
+): Element {
+  console.log('ElementFactoryService: Creating element', { elementType, position, existingElementsCount, shapeType });
+      const baseElement = {
+    style: {
+      x: position.x,
+      y: position.y,
+      fontSize: 16,
+      fontWeight: 'normal' as const,
+      color: '#000000',
+      backgroundColor: 'transparent',
+      borderRadius: 0,
+      padding: 0,
+      textAlign: 'left' as const,
+      zIndex: existingElementsCount + 1
+    }
+  };
 
     switch (elementType) {
       case 'heading':
@@ -79,7 +80,7 @@ export class ElementFactoryService {
           id: `image-${Date.now()}`,
           type: 'image',
           content: '',
-          src: 'https://via.placeholder.com/300x200',
+          src: 'https://www.stratstone.com/-/media/stratstone/blog/2024/top-10-best-supercars-of-2024/mclaren-750s-driving-dynamic-hero-1920x774px.ashx',
           alt: 'Placeholder image',
           ...baseElement,
           style: {
@@ -94,11 +95,11 @@ export class ElementFactoryService {
           id: `video-${Date.now()}`,
           type: 'video',
           content: '',
-          videoSrc: 'https://www.w3schools.com/html/mov_bbb.mp4',
+          src: 'https://www.w3schools.com/html/mov_bbb.mp4',
           controls: true,
-          autoplay: false,
-          loop: false,
-          muted: false,
+          autoplay: true,
+          loop: true,
+          muted: true,
           ...baseElement,
           style: {
             ...baseElement.style,
@@ -107,20 +108,27 @@ export class ElementFactoryService {
           }
         };
 
-      case 'shape':
-        return {
-          id: `shape-${Date.now()}`,
-          type: 'shape',
-          content: '',
-          shapeType: 'rectangle',
-          ...baseElement,
-          style: {
-            ...baseElement.style,
-            width: 100,
-            height: 100,
-            backgroundColor: '#3498db'
-          }
-        };
+case 'shape':
+  return {
+    id: `shape-${Date.now()}`,
+    type: 'shape',
+    content: '',
+    shapeType: shapeType || 'rectangle',
+    ...baseElement,
+    style: {
+      ...baseElement.style,
+      width: 100,
+      height: 100,
+      backgroundColor: 'transparent' // Keep container transparent
+    },
+    svgStyle: {
+      fill: '#3498db',
+      stroke: 'transparent',
+      strokeWidth: 0,
+      opacity: 1
+    }
+  };
+
 
       default:
         throw new Error(`Unknown element type: ${elementType}`);

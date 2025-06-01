@@ -15,11 +15,12 @@ const ElementToolbar: React.FC = () => {
     setShowShapeSelector(!showShapeSelector);
   };
 
-  const handleShapeSelect = (shapeType: string) => {
-    console.log('ElementToolbar: Adding shape type:', shapeType); // Debug log
-    addElement('shape'); // Add shape element, shapeType will be set in factory
-    setShowShapeSelector(false);
-  };
+ const handleShapeSelect = (shapeType: string) => {
+  console.log('ElementToolbar: Adding shape type:', shapeType); // Debug log
+  addElement('shape', shapeType); // Pass the specific shape type
+  setShowShapeSelector(false);
+};
+
 
   const elementTypes = [
     {

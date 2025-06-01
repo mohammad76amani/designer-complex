@@ -1,4 +1,4 @@
-import { Element, ElementStyle } from '../types/template';
+import { Element } from '../types/template';
 
 /**
  * Service for generating element styles and CSS properties
@@ -36,45 +36,8 @@ export class ElementStyleService {
     return 'none';
   }
 
-  /**
-   * Generate transform CSS string based on element style and state
-   */
-  static generateTransform(
-    element: Element, 
-    isHovered: boolean = false, 
-    isActive: boolean = false
-  ): string {
-    const { style, animation } = element;
-    const transforms: string[] = [];
-    
-    // Base transforms from style
-    if (style.rotate) {
-      transforms.push(`rotate(${style.rotate}deg)`);
-    }
-    
-    if (style.scale && style.scale !== 1) {
-      transforms.push(`scale(${style.scale})`);
-    }
-    
-    // Hover animations
-    if (isHovered && animation?.hover) {
-      switch (animation.hover) {
-        case 'scale-up':
-          transforms.push('scale(1.05)');
-          break;
-        case 'scale-down':
-          transforms.push('scale(0.95)');
-          break;
-      }
-    }
-    
-    // Click animations
-    if (isActive && animation?.click === 'scale-down') {
-      transforms.push('scale(0.9)');
-    }
-    
-    return transforms.length ? transforms.join(' ') : 'none';
-  }
+
+  
 
   /**
    * Generate filter CSS string based on element style
@@ -209,59 +172,126 @@ export class ElementStyleService {
   /**
    * Generate complete element style object
    */
-  static generateElementStyle(
-    element: Element,
-    options: {
-      isSelected?: boolean;
-      isHovered?: boolean;
-      isActive?: boolean;
-      isDragging?: boolean;
-      isResizing?: boolean;
-      isInGroup?: boolean;
-    } = {}
-  ): React.CSSProperties {
-    const {
-      isSelected = false,
-      isHovered = false,
-      isActive = false,
-      isDragging = false,
-      isResizing = false,
-      isInGroup = false
-    } = options;
+/**
+ * Generate complete element style object
+ */
+static generateElementStyle(
+  element: Element,
+  options: {
+    isSelected?: boolean;
+    isHovered?: boolean;
+    isActive?: boolean;
+    isDragging?: boolean;
+    isResizing?: boolean;
+    isInGroup?: boolean;
+  } = {}
+): React.CSSProperties {
+  const {
+    isSelected = false,
+    isHovered = false,
+    isActive = false,
+    isDragging = false,
+    isResizing = false,
+    isInGroup = false
+  } = options;
 
-    const { style, type } = element;
+  const { style, type } = element;
 
-    return {
-      position: 'absolute',
-      left: `${style.x}px`,
-      top: `${style.y}px`,
-      width: typeof style.width === 'string' ? style.width : `${style.width}px`,
-      height: typeof style.height === 'string' ? style.height : `${style.height}px`,
-      fontSize: `${style.fontSize}px`,
-      fontWeight: style.fontWeight,
-      color: this.getTextColor(element, isHovered, isActive),
-      backgroundColor: type === 'shape' ? 'transparent' : this.getBackgroundColor(element, isHovered, isActive),
-      borderRadius: `${style.borderRadius}px`,
-      padding: `${style.padding}px`,
-      textAlign: style.textAlign as 'left' | 'center' | 'right',
-      zIndex: isDragging || isResizing ? 1000 : style.zIndex,
-      boxSizing: 'border-box',
-      cursor: isDragging ? 'grabbing' : (isInGroup ? 'pointer' : 'grab'),
-      border: type === 'shape' ? 'none' : this.generateBorder(element, isSelected, isHovered),
-      boxShadow: type === 'shape' ? 'none' : this.generateBoxShadow(element, isSelected, isHovered),
-      userSelect: 'none',
-      touchAction: 'none',
-      opacity: style.opacity ?? 1,
-      letterSpacing: style.letterSpacing !== undefined ? `${style.letterSpacing}px` : 'normal',
-      lineHeight: style.lineHeight ?? 'normal',
-      transform: this.generateTransform(element, isHovered, isActive),
-      filter: type === 'shape' ? 'none' : this.generateFilter(element),
-      transition: 'all 0.2s ease',
-      animationDuration: element.animation?.entrance?.duration ? `${element.animation.entrance.duration}ms` : '1000ms',
-      animationDelay: element.animation?.entrance?.delay ? `${element.animation.entrance.delay}ms` : '0ms',
-      animationFillMode: 'both'
-    };
+  // Calculate transforms - ONLY apply base transforms from style
+  const transforms: string[] = [];
+  
+  // Base scale from Effects tab
+  const baseScale = style.scale || 1;
+  if (baseScale !== 1) {
+    transforms.push(`scale(${baseScale})`);
   }
+  
+  // Base rotation from Effects tab  
+  const baseRotate = style.rotate || 0;
+  if (baseRotate !== 0) {
+    transforms.push(`rotate(${baseRotate}deg)`);
+  }
+  
+  // ONLY apply hover/click transforms if they are explicitly configured
+  // and NOT during drag/resize operations
+  if (!isDragging && !isResizing) {
+    // Hover effects - only if animation is configured
+    if (isHovered && element.animation?.hover && element.animation.hover !== 'none') {
+      switch (element.animation.hover) {
+        case 'scale-up':
+          // Replace the base scale with a slightly larger one
+          const hoverScale = baseScale * 1.05;
+          // Remove the base scale transform and add the hover scale
+          const scaleIndex = transforms.findIndex(t => t.startsWith('scale'));
+          if (scaleIndex >= 0) {
+            transforms[scaleIndex] = `scale(${hoverScale})`;
+          } else {
+            transforms.unshift(`scale(${hoverScale})`);
+          }
+          break;
+        case 'scale-down':
+          const hoverScaleDown = baseScale * 0.95;
+          const scaleDownIndex = transforms.findIndex(t => t.startsWith('scale'));
+          if (scaleDownIndex >= 0) {
+            transforms[scaleDownIndex] = `scale(${hoverScaleDown})`;
+          } else {
+            transforms.unshift(`scale(${hoverScaleDown})`);
+          }
+          break;
+      }
+    }
+    
+    // Click effects - only if animation is configured
+    if (isActive && element.animation?.click && element.animation.click !== 'none') {
+      switch (element.animation.click) {
+        case 'scale-down':
+          const clickScale = baseScale * 0.9;
+          const clickScaleIndex = transforms.findIndex(t => t.startsWith('scale'));
+          if (clickScaleIndex >= 0) {
+            transforms[clickScaleIndex] = `scale(${clickScale})`;
+          } else {
+            transforms.unshift(`scale(${clickScale})`);
+          }
+          break;
+      }
+    }
+  }
+
+  const transformString = transforms.length ? transforms.join(' ') : 'none';
+
+  return {
+    position: 'absolute',
+    left: `${style.x}px`,
+    top: `${style.y}px`,
+    width: typeof style.width === 'string' ? style.width : `${style.width}px`,
+    height: typeof style.height === 'string' ? style.height : `${style.height}px`,
+    fontSize: `${style.fontSize}px`,
+    fontWeight: style.fontWeight,
+    color: this.getTextColor(element, isHovered, isActive),
+    backgroundColor: type === 'shape' ? 'transparent' : this.getBackgroundColor(element, isHovered, isActive),
+    borderRadius: `${style.borderRadius}px`,
+    padding: `${style.padding}px`,
+    textAlign: style.textAlign as 'left' | 'center' | 'right',
+    zIndex: isDragging || isResizing ? 1000 : style.zIndex,
+    boxSizing: 'border-box',
+    cursor: isDragging ? 'grabbing' : (isInGroup ? 'pointer' : 'grab'),
+    border: type === 'shape' ? 'none' : this.generateBorder(element, isSelected, isHovered),
+    boxShadow: type === 'shape' ? 'none' : this.generateBoxShadow(element, isSelected, isHovered),
+    userSelect: 'none',
+    touchAction: 'none',
+    opacity: style.opacity ?? 1,
+    letterSpacing: style.letterSpacing !== undefined ? `${style.letterSpacing}px` : 'normal',
+    lineHeight: style.lineHeight ?? 'normal',
+    transform: transformString,
+    transformOrigin: 'center center',
+    filter: type === 'shape' ? 'none' : this.generateFilter(element),
+    transition: (isDragging || isResizing) ? 'none' : 'all 0.2s ease',
+    animationDuration: element.animation?.entrance?.duration ? `${element.animation.entrance.duration}ms` : '1000ms',
+    animationDelay: element.animation?.entrance?.delay ? `${element.animation.entrance.delay}ms` : '0ms',
+    animationFillMode: 'both'
+  };
+}
+
 
   /**
    * Generate CSS string for element animations (for injection into document)

@@ -318,10 +318,7 @@ const CanvasRenderer: React.FC = () => {
         });
         
         // Update the elements array with the updated group and child elements
-        const finalElements = updatedElements.map(el => 
-          el.id === activeGroupId ? updatedGroup : el
-        );
-
+       
         if (isResizingGroup) {
           const scaleX = finalWidth / (typeof groupElement.style.width === 'number' ? 
             groupElement.style.width : parseFloat(groupElement.style.width as string));

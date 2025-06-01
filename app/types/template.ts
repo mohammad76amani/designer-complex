@@ -183,6 +183,17 @@ export interface Element {
   locked?: boolean;
   // Simple animation properties for the AnimationEditor
   animation?: SimpleAnimation;
+   svgStyle?: {
+    fill?: string;
+    stroke?: string;
+    strokeWidth?: number;
+    opacity?: number;
+    filter?: {
+      boxShadowBlur?: number;
+      boxShadowSpread?: number;
+      boxShadowColor?: string;
+    };
+  };
 }
 
 /**
@@ -279,20 +290,6 @@ export interface AnimationConfig {
   clickBgColor?: string;
   clickTextColor?: string;
 }
-/**
- * Props for FloatingStyleEditor component
- */
-export interface FloatingStyleEditorProps {
-  // All props removed - will come from context
-}
-
-/**
- * Props for CanvasRenderer component
- */
-export interface CanvasRendererProps {
-  // Most props removed - will come from context
-}
-
 
 /**
  * Props for DesignerRenderer component
@@ -311,21 +308,7 @@ export interface DesignerRendererProps {
   onTemplateUpdate?: (updatedTemplate: Template) => void;
 }
 
-/**
- * Props for ElementRenderer component
- */
-export interface ElementRendererProps {
-  element: Element;
-  // All other props removed - will come from context
-}
 
-
-/**
- * Props for ContextMenu component
- */
-export interface ContextMenuProps {
-  // All props removed - will come from context
-}
 
 /**
  * Props for AnimationPreview component
@@ -442,7 +425,7 @@ export interface DesignerContextType {
   updateElement: (element: Element) => void;
   updateElements: (elements: Element[]) => void;
   selectElement: (element: Element | null, isMultiSelect?: boolean) => void;
-  addElement: (elementType: string) => void;
+  addElement: (elementType: string, shapeType?: string) => void;
   deleteElement: (elementId: string) => void;
   
   // Context menu operations
@@ -452,4 +435,16 @@ export interface DesignerContextType {
   // Style editor operations
   openStyleEditor: (element: Element) => void;
   closeStyleEditor: () => void;
+}
+
+
+export interface DesignerProviderProps {
+  children: React.ReactNode;
+  initialElements: Element[];
+  initialBreakpoint: 'sm' | 'lg';
+  initialBreakpoints: { [key: string]: number };
+  initialCanvasHeight?: number;
+  onTemplateUpdate: (elements: Element[]) => void;
+  onBreakpointChange: (breakpoint: 'sm' | 'lg') => void;
+  onCanvasHeightUpdate: (height: number) => void;
 }
