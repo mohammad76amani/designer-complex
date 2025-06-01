@@ -61,7 +61,7 @@ static createElement(
           id: `button-${Date.now()}`,
           type: 'button',
           content: 'Click Me',
-          href: '',
+          href: '#',
           ...baseElement,
           style: {
             ...baseElement.style,

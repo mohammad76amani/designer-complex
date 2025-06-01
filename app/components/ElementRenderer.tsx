@@ -392,7 +392,7 @@ const handleMouseUp = () => {
     if (href) {
       return (
         <a 
-          href={href} 
+          href={"#"} 
           target={target || '_blank'} 
           rel="noopener noreferrer"
           style={{ 

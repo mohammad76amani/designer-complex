@@ -308,6 +308,12 @@ export interface DesignerRendererProps {
   onTemplateUpdate?: (updatedTemplate: Template) => void;
 }
 
+/**
+ * Props for ElementRenderer component
+ */
+export interface ElementRendererProps {
+  element: Element;
+}
 
 
 /**
@@ -355,14 +361,7 @@ export interface GroupContainerProps {
 }
 
 
-export interface ResponsiveCanvasToolbarProps {
-  // All props removed - will come from context
-}
 
-
-export interface ElementToolbarProps {
-  // onAddElement removed - will come from context
-}
 
 /**
  * Props for shape selector component
@@ -447,4 +446,7 @@ export interface DesignerProviderProps {
   onTemplateUpdate: (elements: Element[]) => void;
   onBreakpointChange: (breakpoint: 'sm' | 'lg') => void;
   onCanvasHeightUpdate: (height: number) => void;
+}
+export interface ElementToolbarProps {
+  onAddElement: (elementType: string) => void;
 }

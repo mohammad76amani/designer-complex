@@ -481,38 +481,7 @@ const CanvasRenderer: React.FC = () => {
       gridSize
     );
     
-    return (
-      <div className="canvas-grid" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, pointerEvents: 'none' }}>
-        {/* Vertical lines */}
-        {gridLines.vertical.map(x => (
-          <div
-            key={`v-${x}`}
-            style={{
-              position: 'absolute',
-              left: `${x}px`,
-              top: 0,
-              bottom: 0,
-              width: '1px',
-              backgroundColor: 'rgba(0,0,0,0.1)'
-            }}
-          />
-        ))}
-        {/* Horizontal lines */}
-        {gridLines.horizontal.map(y => (
-          <div
-            key={`h-${y}`}
-            style={{
-              position: 'absolute',
-              top: `${y}px`,
-              left: 0,
-              right: 0,
-              height: '1px',
-              backgroundColor: 'rgba(0,0,0,0.1)'
-            }}
-          />
-        ))}
-      </div>
-    );
+   
   };
 
   // Render canvas size indicator

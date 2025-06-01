@@ -11,8 +11,6 @@ interface ContextMenuProps {
   onGroup?: () => void;
   onUngroup?: () => void;
   canPaste: boolean;
-  canGroup?: boolean;
-  canUngroup?: boolean;
 }
 
 const ContextMenu: React.FC<ContextMenuProps> = ({
@@ -25,9 +23,7 @@ const ContextMenu: React.FC<ContextMenuProps> = ({
   onPaste,
   onGroup,
   onUngroup,
-  canPaste,
-  canGroup = false,
-  canUngroup = false
+  canPaste
 }) => {
   return (
     <>
@@ -72,9 +68,9 @@ const ContextMenu: React.FC<ContextMenuProps> = ({
           Paste
         </div>
         
-        {(canGroup || canUngroup) && <div className="context-menu-separator" />}
+        {(onGroup || onUngroup) && <div className="context-menu-separator" />}
         
-        {canGroup && onGroup && (
+        {onGroup && (
           <div className="context-menu-item" onClick={onGroup}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
               <rect x="3" y="3" width="7" height="7" rx="1" stroke="currentColor" strokeWidth="2"/>
@@ -87,7 +83,7 @@ const ContextMenu: React.FC<ContextMenuProps> = ({
           </div>
         )}
         
-        {canUngroup && onUngroup && (
+        {onUngroup && (
           <div className="context-menu-item" onClick={onUngroup}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
               <rect x="3" y="3" width="7" height="7" rx="1" stroke="currentColor" strokeWidth="2"/>
