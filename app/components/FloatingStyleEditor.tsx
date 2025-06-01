@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useDesigner } from '../contexts/DesignerContext';
 import AnimationEditor from './AnimationEditor';
-import ElementManagementService from '../services/elementManagementService';
 
 const FloatingStyleEditor: React.FC = () => {
   const {
@@ -44,34 +43,73 @@ const FloatingStyleEditor: React.FC = () => {
     };
   }, [closeStyleEditor]);
 
-  // Update element style
-  const updateStyle = (property: string, value: any) => {
-    let updatedElement = { ...selectedElement };
 
-    if (property.includes('.')) {
-      const [parent, child] = property.split('.');
-      if (parent === 'animation') {
-        const currentAnimation = selectedElement.animation || {};
-        updatedElement = {
-          ...selectedElement,
-          animation: {
-            ...currentAnimation,
-            [child]: value,
-            click: 'none'
-          }
-        };
-      }
-    } else {
-      if (selectedElement.type === 'shape' && property === 'backgroundColor') {
+  // Update element style
+const updateStyle = (property: string, value: any) => {
+  let updatedElement = { ...selectedElement };
+
+  if (property.includes('.')) {
+    const [parent, child] = property.split('.');
+    if (parent === 'animation') {
+      const currentAnimation = selectedElement.animation || {};
+      updatedElement = {
+        ...selectedElement,
+        animation: {
+          ...currentAnimation,
+          [child]: value,
+          click: 'none'
+        }
+      };
+    }
+  } else {
+    // Special handling for shape elements
+    if (selectedElement.type === 'shape') {
+      if (property === 'backgroundColor') {
+        // Update svgStyle.fill for shapes
         updatedElement = {
           ...selectedElement,
           style: {
             ...selectedElement.style,
-            backgroundColor: 'rgba(255, 0, 0, 0)',
-            color: value
+            backgroundColor: 'transparent' // Keep container transparent
+          },
+          svgStyle: {
+            ...selectedElement.svgStyle,
+            fill: value
+          }
+        };
+      } else if (property === 'borderColor') {
+        // Update svgStyle.stroke for shapes
+        updatedElement = {
+          ...selectedElement,
+          svgStyle: {
+            ...selectedElement.svgStyle,
+            stroke: value
+          }
+        };
+      } else if (property === 'borderWidth') {
+        // Update svgStyle.strokeWidth for shapes
+        updatedElement = {
+          ...selectedElement,
+          svgStyle: {
+            ...selectedElement.svgStyle,
+            strokeWidth: value
+          }
+        };
+      } else if (property === 'opacity') {
+        // Update both style and svgStyle opacity
+        updatedElement = {
+          ...selectedElement,
+          style: {
+            ...selectedElement.style,
+            opacity: value
+          },
+          svgStyle: {
+            ...selectedElement.svgStyle,
+            opacity: value
           }
         };
       } else {
+        // Regular style update for other properties
         updatedElement = {
           ...selectedElement,
           style: {
@@ -80,18 +118,21 @@ const FloatingStyleEditor: React.FC = () => {
           }
         };
       }
-    }
-
-    // Validate before updating
-    const validation = ElementManagementService.validateElement(updatedElement);
-    if (validation.isValid) {
-      updateElement(updatedElement);
     } else {
-      console.warn('Element validation failed:', validation.errors);
-      // Still update but log warnings
-      updateElement(updatedElement);
+      // Non-shape elements - regular handling
+      updatedElement = {
+        ...selectedElement,
+        style: {
+          ...selectedElement.style,
+          [property]: value
+        }
+      };
     }
-  };
+  }
+
+  console.log('Updated element:', updatedElement); // Debug log
+  updateElement(updatedElement);
+};
 
   // Update element attributes (src, href, alt)
   const updateAttribute = (attribute: string, value: string | boolean) => {
@@ -102,14 +143,17 @@ const FloatingStyleEditor: React.FC = () => {
     });
   };
 
-
-
   // Update element content
   const updateContent = (value: string) => {
     updateElement({
       ...selectedElement,
       content: value
     });
+  };
+
+  // Helper function to get safe value with fallback
+  const getSafeValue = (value: any, fallback: any) => {
+    return value !== undefined && value !== null ? value : fallback;
   };
 
   // Render color picker
@@ -133,160 +177,186 @@ const FloatingStyleEditor: React.FC = () => {
 );
   // Render number input with slider
   const renderNumberInput = (
-  label: string,
-  property: string,
-  value: number | undefined,
-  min: number,
-  max: number,
-  step: number = 1,
-  unit: string = 'px'
-) => (
-  <div className="style-control">
-    <label>{label}</label>
-    <div className="number-input-container">
-      <input
-        type="range"
-        min={min}
-        max={max}
-        step={step}
-        value={value ?? 0} // Use nullish coalescing for better undefined handling
-        onChange={(e) => updateStyle(property, parseFloat(e.target.value))}
-      />
-      <div className="number-input-value">
-        <input
-          type="number"
-          min={min}
-          max={max}
-          step={step}
-          value={value ?? 0} // Use nullish coalescing
-          onChange={(e) => updateStyle(property, parseFloat(e.target.value))}
-        />
-        <span>{unit}</span>
+    label: string,
+    property: string,
+    value: number,
+    min: number,
+    max: number,
+    step: number = 1,
+    unit: string = 'px'
+  ) => {
+    const safeValue = getSafeValue(value, min);
+    return (
+      <div className="style-control">
+        <label>{label}</label>
+        <div className="number-input-container">
+          <input
+            type="range"
+            min={min}
+            max={max}
+            step={step}
+            value={safeValue}
+            onChange={(e) => updateStyle(property, parseFloat(e.target.value))}
+          />
+          <div className="number-input-value">
+            <input
+              type="number"
+              min={min}
+              max={max}
+              step={step}
+              value={safeValue}
+              onChange={(e) => updateStyle(property, parseFloat(e.target.value))}
+            />
+            <span>{unit}</span>
+          </div>
+        </div>
       </div>
-    </div>
-  </div>
-);
-
+    );
+  };
 
   // Render select dropdown
-const renderSelect = (
-  label: string,
-  property: string,
-  value: string | undefined,
-  options: { value: string, label: string }[]
-) => (
-  <div className="style-control">
-    <label>{label}</label>
-    <select
-      value={value || options[0]?.value || ''} // Provide default value
-      onChange={(e: React.ChangeEvent<HTMLSelectElement>) => updateStyle(property, e.target.value)}
-    >
-      {options.map(option => (
-        <option key={option.value} value={option.value}>
-          {option.label}
-        </option>
-      ))}
-    </select>
-  </div>
-);
+  const renderSelect = (
+    label: string,
+    property: string,
+    value: string,
+    options: { value: string, label: string }[]
+  ) => (
+    <div className="style-control">
+      <label>{label}</label>
+      <select
+        value={getSafeValue(value, options[0]?.value || '')}
+        onChange={(e: React.ChangeEvent<HTMLSelectElement>) => updateStyle(property, e.target.value)}
+      >
+        {options.map(option => (
+          <option key={option.value} value={option.value}>
+            {option.label}
+          </option>
+        ))}
+      </select>
+    </div>
+  );
 
   // Render text input
- const renderTextInput = (
-  label: string,
-  property: string,
-  value: string | undefined
-) => (
-  <div className="style-control">
-    <label>{label}</label>
-    <input
-      type="text"
-      value={value || ''} // Always provide a default value
-      onChange={(e) => updateAttribute(property, e.target.value)}
-      placeholder={label}
-    />
-  </div>
-);
+  const renderTextInput = (
+    label: string,
+    property: string,
+    value: string
+  ) => (
+    <div className="style-control">
+      <label>{label}</label>
+      <input
+        type="text"
+        value={getSafeValue(value, '')}
+        onChange={(e) => updateAttribute(property, e.target.value)}
+        placeholder={label}
+      />
+    </div>
+  );
 
   // Render text area
- const renderTextArea = (
-  label: string,
-  value: string | undefined
-) => (
-  <div className="style-control">
-    <label>{label}</label>
-    <textarea
-      value={value || ''} // Always provide a default value
-      onChange={(e) => updateContent(e.target.value)}
-      rows={3}
-      placeholder={label}
-    />
-  </div>
-);
+  const renderTextArea = (
+    label: string,
+    value: string
+  ) => (
+    <div className="style-control">
+      <label>{label}</label>
+      <textarea
+        value={getSafeValue(value, '')}
+        onChange={(e) => updateContent(e.target.value)}
+        rows={3}
+        placeholder={label}
+      />
+    </div>
+  );
 
   // Render style tab content
- const renderStyleTab = () => (
+const renderStyleTab = () => (
   <div className="tab-content">
-    {/* Background and Border - common to most elements */}
-    <div className="control-group">
-      <h4>Appearance</h4>
-      {renderColorPicker('Background', 'backgroundColor', selectedElement.style.backgroundColor || 'transparent')}
-      {renderNumberInput('Border Radius', 'borderRadius', selectedElement.style.borderRadius || 0, 0, 100)}
-      {renderNumberInput('Z-Index', 'zIndex', selectedElement.style.zIndex || 0, 0, 1000, 1, '')}
-      {renderNumberInput('Opacity', 'opacity', selectedElement.style.opacity ?? 1, 0, 1, 0.1, '')}
-    </div>
+    {/* Shape-specific appearance controls */}
+    {selectedElement.type === 'shape' && (
+      <div className="control-group">
+        <h4>Shape Appearance</h4>
+        {renderColorPicker('Fill Color', 'backgroundColor', getSafeValue(selectedElement.svgStyle?.fill, '#3498db'))}
+        {renderNumberInput('Opacity', 'opacity', getSafeValue(selectedElement.svgStyle?.opacity || selectedElement.style.opacity, 1), 0, 1, 0.1, '')}
+        {renderNumberInput('Z-Index', 'zIndex', getSafeValue(selectedElement.style.zIndex, 0), 0, 1000, 1, '')}
+      </div>
+    )}
 
-    {/* Typography section */}
+    {/* Background and Border - common to most elements (but not shapes) */}
+    {selectedElement.type !== 'shape' && (
+      <div className="control-group">
+        <h4>Appearance</h4>
+        {renderColorPicker('Background', 'backgroundColor', getSafeValue(selectedElement.style.backgroundColor, '#ffffff'))}
+        {renderNumberInput('Border Radius', 'borderRadius', getSafeValue(selectedElement.style.borderRadius, 0), 0, 100)}
+        {renderNumberInput('Z-Index', 'zIndex', getSafeValue(selectedElement.style.zIndex, 0), 0, 1000, 1, '')}
+        {renderNumberInput('Opacity', 'opacity', getSafeValue(selectedElement.style.opacity, 1), 0, 1, 0.1, '')}
+      </div>
+    )}
+
+    {/* Typography controls - only for text elements */}
     {(selectedElement.type === 'button' || selectedElement.type === 'paragraph' || selectedElement.type === 'heading') && (
       <div className="control-group">
         <h4>Typography</h4>
-        {renderColorPicker('Text Color', 'color', selectedElement.style.color || '#000000')}
-        {renderNumberInput('Font Size', 'fontSize', selectedElement.style.fontSize || 16, 8, 72)}
-   {renderSelect('Font Weight', 'fontWeight', selectedElement.style.fontWeight || '400', [
+        {renderColorPicker('Text Color', 'color', getSafeValue(selectedElement.style.color, '#000000'))}
+        {renderNumberInput('Font Size', 'fontSize', getSafeValue(selectedElement.style.fontSize, 16), 8, 72)}
+       {renderSelect('Font Weight', 'fontWeight', getSafeValue(selectedElement.style.fontWeight, 'normal'), [
+  { value: 'normal', label: 'Normal (400)' },
+  { value: 'bold', label: 'Bold (700)' },
   { value: '100', label: 'Thin (100)' },
-  { value: '200', label: 'Extra Light (200)' },
-  { value: '300', label: 'Light (300)' },
-  { value: '400', label: 'Regular (400)' },
-  { value: '500', label: 'Medium (500)' },
-  { value: '600', label: 'Semi Bold (600)' },
-  { value: '700', label: 'Bold (700)' },
-  { value: '800', label: 'Extra Bold (800)' },
-  { value: '900', label: 'Black (900)' }
+  { value: '200', label: 'Extra Light (200)'},
+  { value: '300', label: 'Light (300) ' },
+  { value: '500', label: 'Medium (500) ' },
+  { value: '600', label: 'Semi Bold (600) ' },
+  { value: '800', label: 'Extra Bold (800) ' },
+  { value: '900', label: 'Black (900) ' }
 ])}
-        {renderSelect('Text Align', 'textAlign', selectedElement.style.textAlign || 'left', [
+        {renderSelect('Text Align', 'textAlign', getSafeValue(selectedElement.style.textAlign, 'left'), [
           { value: 'left', label: 'Left' },
           { value: 'center', label: 'Center' },
           { value: 'right', label: 'Right' }
         ])}
-        {renderNumberInput('Padding', 'padding', selectedElement.style.padding || 0, 0, 50)}
-        {renderNumberInput('Letter Spacing', 'letterSpacing', selectedElement.style.letterSpacing ?? 0, -5, 10, 0.1, 'px')}
-        {renderNumberInput('Line Height', 'lineHeight', selectedElement.style.lineHeight ?? 1.5, 0.5, 3, 0.1, '')}
+        {renderNumberInput('Padding', 'padding', getSafeValue(selectedElement.style.padding, 0), 0, 50)}
+        {renderNumberInput('Letter Spacing', 'letterSpacing', getSafeValue(selectedElement.style.letterSpacing, 0), -5, 10, 0.1, 'px')}
+        {renderNumberInput('Line Height', 'lineHeight', getSafeValue(selectedElement.style.lineHeight, 1.5), 0.5, 3, 0.1, '')}
       </div>
     )}
 
     {/* Border controls */}
     <div className="control-group">
-      <h4>Border</h4>
-      {renderNumberInput('Border Width', 'borderWidth', selectedElement.style.borderWidth ?? 0, 0, 20, 1, 'px')}
-      {renderSelect('Border Style', 'borderStyle', selectedElement.style.borderStyle || 'none', [
+      <h4>{selectedElement.type === 'shape' ? 'Shape Border' : 'Border'}</h4>
+      {renderNumberInput('Border Width', 'borderWidth', 
+        getSafeValue(
+          selectedElement.type === 'shape' 
+            ? selectedElement.svgStyle?.strokeWidth 
+            : selectedElement.style.borderWidth, 
+          0
+        ), 0, 20, 1, 'px')}
+      
+      {selectedElement.type !== 'shape' && renderSelect('Border Style', 'borderStyle', getSafeValue(selectedElement.style.borderStyle, 'none'), [
         { value: 'none', label: 'None' },
         { value: 'solid', label: 'Solid' },
         { value: 'dashed', label: 'Dashed' },
         { value: 'dotted', label: 'Dotted' }
       ])}
-      {renderColorPicker('Border Color', 'borderColor', selectedElement.style.borderColor || '#000000')}
+      
+      {renderColorPicker('Border Color', 'borderColor', 
+        getSafeValue(
+          selectedElement.type === 'shape' 
+            ? selectedElement.svgStyle?.stroke 
+            : selectedElement.style.borderColor, 
+          '#000000'
+        ))}
     </div>
 
-    {/* Shadow controls */}
+    {/* Shadow controls - for now, apply to container for shapes */}
     <div className="control-group">
       <h4>Shadow</h4>
-      {renderNumberInput('Shadow Blur', 'boxShadowBlur', selectedElement.style.boxShadowBlur ?? 0, 0, 50, 1, 'px')}
-      {renderNumberInput('Shadow Spread', 'boxShadowSpread', selectedElement.style.boxShadowSpread ?? 0, 0, 50, 1, 'px')}
-      {renderColorPicker('Shadow Color', 'boxShadowColor', selectedElement.style.boxShadowColor || 'rgba(0,0,0,0.2)')}
+      {renderNumberInput('Shadow Blur', 'boxShadowBlur', getSafeValue(selectedElement.style.boxShadowBlur, 0), 0, 50, 1, 'px')}
+      {renderNumberInput('Shadow Spread', 'boxShadowSpread', getSafeValue(selectedElement.style.boxShadowSpread, 0), 0, 50, 1, 'px')}
+      {renderColorPicker('Shadow Color', 'boxShadowColor', getSafeValue(selectedElement.style.boxShadowColor, 'rgba(0,0,0,0.2)'))}
     </div>
   </div>
 );
-
-
   // Render content tab
 const renderContentTab = () => (
   <div className="tab-content">
@@ -302,7 +372,7 @@ const renderContentTab = () => (
     {selectedElement.type === 'button' && (
       <div className="control-group">
         <h4>Button Properties</h4>
-        {renderTextInput('Link URL', 'href', selectedElement.href)}
+        {renderTextInput('Link URL', 'href', selectedElement?.href)}
         {renderSelect('Open Link In', 'target', selectedElement.target || '_self', [
           { value: '_self', label: 'Same Window' },
           { value: '_blank', label: 'New Window' }
@@ -314,8 +384,8 @@ const renderContentTab = () => (
     {selectedElement.type === 'image' && (
       <div className="control-group">
         <h4>Image Properties</h4>
-        {renderTextInput('Image URL', 'src', selectedElement.src)}
-        {renderTextInput('Alt Text', 'alt', selectedElement.alt)}
+        {renderTextInput('Image URL', 'src', selectedElement?.src)}
+        {renderTextInput('Alt Text', 'alt', selectedElement?.alt)}
         {renderSelect('Image Fit', 'objectFit', selectedElement.style.objectFit || 'cover', [
           { value: 'cover', label: 'Cover' },
           { value: 'contain', label: 'Contain' },
@@ -413,7 +483,6 @@ const renderContentTab = () => (
     )}
   </div>
 );
-
 
 
   // Render effects tab
@@ -773,11 +842,12 @@ const renderContentTab = () => (
           background: #f1f3f5;
         }
         
-        .editor-content::-webkit-scrollbar-thumb {
+        .editor-content::-
+          webkit-scrollbar-thumb {
           background-color: #ced4da;
           border-radius: 3px;
         }
-        
+          
         .editor-content::-webkit-scrollbar-thumb:hover {
           background-color: #adb5bd;
         }

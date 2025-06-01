@@ -32,8 +32,8 @@ const SectionRenderer: React.FC<SectionRendererProps> = ({ sectionKey, section }
     paddingBottom: `${settings?.paddingBottom}px`,
     paddingLeft: `${settings?.paddingLeft}px`,
     paddingRight: `${settings?.paddingRight}px`,
-    marginTop: settings?.marginTop ? `${settings?.marginTop}px` : undefined,
-    marginBottom: settings?.marginBottom ? `${settings?.marginBottom}px` : undefined,
+    marginTop: settings?.marginTop? `${settings?.marginTop}px` : undefined,
+    marginBottom: settings?.marginBottom? `${settings?.marginBottom}px` : undefined,
     backgroundColor: settings?.backgroundColor,
   };
   

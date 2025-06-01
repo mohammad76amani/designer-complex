@@ -18,9 +18,10 @@ const VideoElement: React.FC<{ element: Element }> = ({ element }) => {
           objectFit: style.objectFit as 'cover' | 'contain' | 'fill' | 'none' || 'cover',
           borderRadius: `${style.borderRadius}px`,
         }}
-        controls={false}
-        muted
-        loop
+        controls={element.controls}
+        muted={element.muted}
+        loop={element.loop}
+        autoPlay={ element.autoplay}
       />
     </div>
   );

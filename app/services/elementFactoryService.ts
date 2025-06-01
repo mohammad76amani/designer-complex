@@ -1,3 +1,4 @@
+import { tree } from 'next/dist/build/templates/app-page';
 import { Element } from '../types/template';
 
 export class ElementFactoryService {
@@ -82,7 +83,7 @@ const baseElement = {
           id: `image-${Date.now()}`,
           type: 'image',
           content: '',
-          src: 'https://via.placeholder.com/300x200',
+          src: 'https://www.stratstone.com/-/media/stratstone/blog/2024/top-10-best-supercars-of-2024/mclaren-750s-driving-dynamic-hero-1920x774px.ashx',
           alt: 'Placeholder image',
           ...baseElement,
           style: {
@@ -97,11 +98,11 @@ const baseElement = {
           id: `video-${Date.now()}`,
           type: 'video',
           content: '',
-          videoSrc: 'https://www.w3schools.com/html/mov_bbb.mp4',
+          src: 'https://www.w3schools.com/html/mov_bbb.mp4',
           controls: true,
-          autoplay: false,
-          loop: false,
-          muted: false,
+          autoplay: true,
+          loop: true,
+          muted: true,
           ...baseElement,
           style: {
             ...baseElement.style,
@@ -121,9 +122,16 @@ const baseElement = {
       ...baseElement.style,
       width: 100,
       height: 100,
-      backgroundColor: '#3498db'
+      backgroundColor: 'transparent' // Keep container transparent
+    },
+    svgStyle: {
+      fill: '#3498db',
+      stroke: 'transparent',
+      strokeWidth: 0,
+      opacity: 1
     }
   };
+
 
       default:
         throw new Error(`Unknown element type: ${elementType}`);

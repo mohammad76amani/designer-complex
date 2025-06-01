@@ -61,17 +61,20 @@ export const DesignerProvider: React.FC<DesignerProviderProps> = ({  children,
   }, [onCanvasHeightUpdate]);
   
   // Element operations
-  const updateElement = useCallback((element: Element) => {
-    const updatedElements = elements.map(el =>
-      el.id === element.id ? element : el
-    );
-    setElements(updatedElements);
-    onTemplateUpdate(updatedElements);
-    
-    if (selectedElement && selectedElement.id === element.id) {
-      setSelectedElement(element);
-    }
-  }, [elements, selectedElement, onTemplateUpdate]);
+const updateElement = useCallback((element: Element) => {
+  console.log('🔶 updateElement called for:', element.id, 'new scale:', element.style.scale);
+  
+  const updatedElements = elements.map(el =>
+    el.id === element.id ? element : el
+  );
+  setElements(updatedElements);
+  onTemplateUpdate(updatedElements);
+  
+  if (selectedElement && selectedElement.id === element.id) {
+    setSelectedElement(element);
+  }
+}, [elements, selectedElement, onTemplateUpdate]);
+
   
   const updateElements = useCallback((newElements: Element[]) => {
     setElements(newElements);
@@ -107,44 +110,45 @@ export const DesignerProvider: React.FC<DesignerProviderProps> = ({  children,
     setContextMenu(prev => ({ ...prev, show: false }));
   }, [elements]);
   
-  const addElement = useCallback((elementType: string, shapeType?: string) => {
-    console.log('Adding element:', elementType, 'shapeType:', shapeType); // Debug log
+const addElement = useCallback((elementType: string, shapeType?: string) => {
+  console.log('Adding element:', elementType, 'shapeType:', shapeType); // Debug log
+  
+  // Get canvas dimensions
+  const canvasBounds = { width: canvasWidth, height: canvasHeight };
+  
+  // Calculate center position
+  const centerX = Math.max(50, canvasWidth / 2 - 100);
+  const centerY = Math.max(50, canvasHeight / 2 - 50);
+  
+  console.log('Canvas bounds:', canvasBounds); // Debug log
+  console.log('Center position:', { x: centerX, y: centerY }); // Debug log
+  
+  try {
+    // Create element using factory service
+    const newElement = ElementFactoryService.createElement(
+      elementType,
+      { x: centerX, y: centerY },
+      elements.length,
+      shapeType // Pass shapeType to factory
+    );
     
-    // Get canvas dimensions
-    const canvasBounds = { width: canvasWidth, height: canvasHeight };
+    console.log('Created element:', newElement); // Debug log
     
-    // Calculate center position
-    const centerX = Math.max(50, canvasWidth / 2 - 100);
-    const centerY = Math.max(50, canvasHeight / 2 - 50);
+    // Add the new element to the canvas
+    const newElements = [...elements, newElement];
+    setElements(newElements);
+    onTemplateUpdate(newElements);
     
-    console.log('Canvas bounds:', canvasBounds); // Debug log
-    console.log('Center position:', { x: centerX, y: centerY }); // Debug log
+    // Select the new element
+    setSelectedElement(newElement);
+    setSelectedElementIds([newElement.id]);
     
-    try {
-      // Create element using factory service with shapeType
-      const newElement = ElementFactoryService.createElement(
-        elementType,
-        { x: centerX, y: centerY },
-        elements.length,
-        shapeType // Pass the shapeType parameter
-      );
-      
-      console.log('Created element:', newElement); // Debug log
-      
-      // Add the new element to the canvas
-      const newElements = [...elements, newElement];
-      setElements(newElements);
-      onTemplateUpdate(newElements);
-      
-      // Select the new element
-      setSelectedElement(newElement);
-      setSelectedElementIds([newElement.id]);
-      
-      console.log('Element added successfully'); // Debug log
-    } catch (error) {
-      console.error('Error adding element:', error);
-    }
-  }, [elements, canvasWidth, canvasHeight, onTemplateUpdate]);
+    console.log('Element added successfully'); // Debug log
+  } catch (error) {
+    console.error('Error adding element:', error);
+  }
+}, [elements, canvasWidth, canvasHeight, onTemplateUpdate]);
+
   
   const deleteElement = useCallback((elementId: string) => {
     const updatedElements = ElementManagementService.deleteElement(elements, elementId);
